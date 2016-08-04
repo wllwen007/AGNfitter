@@ -64,7 +64,7 @@ def CATALOG_settings():
     cat['ndflag_bool'] = False          ## Does you catalog has columns with flags 1(0) for 
                                         ## detections (nondetections)? 
     cat['ndflag_list'] = 'list'         ## If ASCII: List of column indexes (int)
-                                        ## If FITS: List of column names (str)    
+    #cat['ndflag_suffix'] = '_nd'       ## If FITS: common ending to nondetections column names (str)
 
     ## COSTUMIZED WORKING PATHS
     cat['workingpath'] = cat['path']  # Allows for a working path other than the AGNfitter code path.
