@@ -209,7 +209,7 @@ class OUTPUT:
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd = self.nuLnus
 
         #plotting settings
-        fig, ax1, ax2 = SED_plotting_settings(all_nus_rest, data_nuLnu_rest)
+        fig, ax1, ax2, axr = SED_plotting_settings2(all_nus_rest, data_nuLnu_rest)
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
         lw= 1.5
         
@@ -228,12 +228,14 @@ class OUTPUT:
             p5=ax1.plot( all_nus, TOnuLnu[i], marker="None",  linewidth=lw, label="1 /sigma",color= TOcolor ,alpha = 0.5)
             p1= ax1.plot( all_nus, TOTALnuLnu[i], marker="None", linewidth=lw,  label="1 /sigma", color= TOTALcolor, alpha= 0.5)
 
-            
-            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
-
             det = [yndflags==1]
             upp = [yndflags==0]
             
+            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
+            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][det])/data_errors_rest[det],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
+            
+
+
             upplimits = ax1.errorbar(data_nus[upp], 2.*data_nuLnu_rest[upp], yerr= data_errors_rest[upp]/2, uplims = True, linestyle='',  markersize=5, color="black")
             (_, caps, _) = ax1.errorbar(data_nus[det], data_nuLnu_rest[det], yerr= data_errors_rest[det], capsize=4, linestyle="None", linewidth=1.5,  marker='o',markersize=5, color="black", alpha = 1)
 
@@ -560,6 +562,70 @@ class FLUXES_ARRAYS:
 Some stand-alone functions on the SED plot format
 """
 
+
+def SED_plotting_settings2(x, ydata):
+
+    """
+    This function produces the setting for the figures for SED plotting.
+    **Input:
+    - all nus, and data (to make the plot limits depending on the data)
+    """
+    fig = plt.figure()
+    ax1 = fig.add_axes([0.1,0.3,0.8,0.6])
+    ax2 = ax1.twiny()
+    axr = fig.add_axes([0.1,0.1,0.8,0.2],sharex=ax1)
+    #axr = fig.add_axes([0.1,0.1,0.8,0.2])
+
+    #-- Latex -------------------------------------------------
+    rc('text', usetex=True)
+    rc('font', family='serif')
+    rc('axes', linewidth=1.5)
+    #-------------------------------------------------------------
+
+    #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')   
+    ax1.xaxis.set_visible(False)
+    axr.set_xlabel(r'rest-frame ${\log \  \nu}$ $[\mathrm{Hz}] $', fontsize=13)
+    ax2.set_xlabel(r'${\lambda}$ $[\mathrm{\mu m}] $', fontsize=13)
+    ax1.set_ylabel(r'$\nu L(\nu)$ $[\mathrm{erg\ s}^{-1}]$',fontsize=13)
+    axr.set_ylabel(r'residual $[\sigma]$',fontsize=13)
+
+    #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
+    #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
+
+    axr.set_autoscalex_on(True) 
+    ax1.set_autoscalex_on(True) 
+    ax1.set_autoscaley_on(True) 
+    ax1.set_xscale('linear')
+    axr.set_xscale('linear')
+    ax1.set_yscale('log')
+
+
+    mediandata = np.median(ydata)
+    mindata = np.min(ydata)
+    maxdata = np.max(ydata)
+    #ax1.set_ylim(mediandata /50.,mediandata * 50.)
+    ax1.set_ylim(mindata /10.,maxdata * 10.)
+
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    #ax2.set_ylim( mediandata /50., mediandata * 50.)
+    ax2.set_ylim( mindata /10., maxdata * 10.)
+
+
+    ax2.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
+    #ax2.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
+    #ax2.tick_params(axis='both',reset=False,which='minor',length=4,width=1.5)
+
+    x2 = (2.98e14/ x)[::-1] # Wavelenght axis
+    xr = np.log10(x[::-1]) # frequency axis
+
+    axr.plot(xr, np.zeros(len(xr)), 'gray', alpha=1)
+    ax2.plot(x2, np.ones(len(x2)), alpha=0)
+    ax2.invert_xaxis()
+    ax2.set_xticks([100., 10.,1., 0.1]) 
+
+
+    return fig, ax1, ax2, axr
 
 
 def SED_plotting_settings(x, ydata):
