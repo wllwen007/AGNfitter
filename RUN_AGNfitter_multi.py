@@ -19,6 +19,8 @@ This is the main script.
 #PYTHON IMPORTS
 import sys,os
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import pylab as pl
 import time
@@ -91,7 +93,38 @@ def MAKE_model_dictionary(cat, filters, clobbermodel=False):
     return Modelsdict
 
 
-def RUN_AGNfitter_onesource_independent( line, data_obj, filtersz, clobbermodel=False):
+def MAKE_model_dictionary_zrange(cat, filters, clobbermodel=False):
+    """
+    Create model dictionary for all redshifts in z-array and filters
+    input 
+        cat - catalog settings
+        filters - filter settings
+        clobbermodel - remove any existing dictionary (default - False)
+    ouput
+        modelsdict
+    """
+    
+    t0= time.time()
+
+    if clobbermodel and os.path.lexists(cat['dict_path']):
+        print "removing model dictionary "+cat['dict_path']
+        os.system('rm -rf '+ cat['dict_path'])
+        
+    if not os.path.lexists(cat['dict_path']):
+
+        MODELFILES.construct(cat['path'])
+
+        mydict = MODELSDICT(cat['dict_path'], cat['path'], filters)
+        mydict.build()
+        
+        print '_____________________________________________________'
+        print 'For this dictionary creation %.2g min elapsed'% ((time.time() - t0)/60.)
+
+    Modelsdict = cPickle.load(file(cat['dict_path'], 'rb'))
+    
+    return Modelsdict
+
+def RUN_AGNfitter_onesource_independent(cat, line, data_obj, filtersz, clobbermodel=False):
     """
     Main function for fitting a single source in line 'line' and create it's modelsdict independently.
     """
@@ -125,11 +158,11 @@ def RUN_AGNfitter_onesource_independent( line, data_obj, filtersz, clobbermodel=
       
     if not os.path.lexists(dictz):
         zdict = MODELSDICT(dictz, cat['path'], filtersz)
-        zdict.build()
+        Modelsdictz = zdict.build(save=False)
         print '_____________________________________________________'
         print 'For this dictionary creation %.2g min elapsed'% ((time.time() - t0)/60.)
-
-    Modelsdictz = cPickle.load(file(dictz, 'rb')) 
+    else:
+        Modelsdictz = cPickle.load(file(dictz, 'rb')) 
 
     data.DICTS(filtersz, Modelsdictz)
 
@@ -140,17 +173,23 @@ def RUN_AGNfitter_onesource_independent( line, data_obj, filtersz, clobbermodel=
     t1= time.time()
 
     MCMC_AGNfitter.main(data, P, mc)        
+    print 'fitting took %.2g min'% ((time.time() - t1)/60.)
+    
+    t2= time.time()
     PLOTandWRITE_AGNfitter.main(data,  P,  out)
+    print 'plotting took %.2g min '% ((time.time() - t2)/60.)
 
 
     print '_____________________________________________________'
-    print 'For this fit %.2g min elapsed'% ((time.time() - t1)/60.)
+    print 'Processing this source took %.2g min '% ((time.time() - t0)/60.)
     return
 
-def RUN_AGNfitter_onesource( line, data_obj, modelsdict):
+def RUN_AGNfitter_onesource(cat, line, data_obj, modelsdict):
     """
     Main function for fitting a single source in line 'line'.
     """
+    
+    t0= time.time()
     
     mc = MCMC_settings()
     out = OUTPUT_settings()
@@ -167,14 +206,18 @@ def RUN_AGNfitter_onesource( line, data_obj, modelsdict):
     print '- Sourcename: ', data.name
 
 
-    t1= time.time()
 
-    MCMC_AGNfitter.main(data, P, mc)        
+    t1= time.time()
+    MCMC_AGNfitter.main(data, P, mc)       
+    print 'fitting took %.2g min'% ((time.time() - t1)/60.) 
+    
+    t2= time.time()
     PLOTandWRITE_AGNfitter.main(data,  P,  out)
+    print 'plotting took %.2g min '% ((time.time() - t2)/60.)
 
 
     print '_____________________________________________________'
-    print 'For this fit %.2g min elapsed'% ((time.time() - t1)/60.)
+    print 'For this fit %.2g min elapsed'% ((time.time() - t0)/60.)
     return
 
     
@@ -184,7 +227,7 @@ def multi_run_wrapper(args):
     """
     return RUN_AGNfitter_onesource(*args)
 
-def RUN_AGNfitter_multiprocessing(processors, data_obj, modelsdict):
+def RUN_AGNfitter_multiprocessing(cat, processors, data_obj, modelsdict):
     """
     Main function for fitting all sources in a large catalog.
     Splits the job of running the large number of sources
@@ -248,18 +291,26 @@ if __name__ == "__main__":
 
     # run for once source only and construct dictionary only for this source
     if args.independent:
-        RUN_AGNfitter_onesource_independent(args.sourcenumber, data_ALL, filters, clobbermodel=clobbermodel)
-        
+        RUN_AGNfitter_onesource_independent(cat, args.sourcenumber, data_ALL, filters, clobbermodel=clobbermodel)
         
     else:
+        
+        if 'dict_zarray' not in filters.keys():
+            filters['dict_zarray'] = np.unique(data_ALL.z)
+            
+        
         # make/read the model dictionary
         Modelsdict = MAKE_model_dictionary(cat, filters, clobbermodel=clobbermodel)
 
         # a single source is specified
         if args.sourcenumber >= 0:
-            RUN_AGNfitter_onesource(args.sourcenumber, data_ALL, Modelsdict)
+            RUN_AGNfitter_onesource(cat, args.sourcenumber, data_ALL, Modelsdict)
         else:
-            RUN_AGNfitter_multiprocessing(args.ncpu, data_ALL, Modelsdict)
+            if args.ncpu == 1:
+                for line in range(data_ALL.cat['nsources']):
+                    RUN_AGNfitter_onesource(cat, line, data_ALL, Modelsdict)
+            else:
+                RUN_AGNfitter_multiprocessing(cat, args.ncpu, data_ALL, Modelsdict)
         
         
     print '======= : ======='
