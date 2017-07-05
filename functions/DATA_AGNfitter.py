@@ -148,10 +148,19 @@ class DATA_all:
 
             #read all wavelengths, fluxes, fluerrors, flags
             colnames = fitstable.dtype.names
-            wl_cols = [ c for c in colnames if self.cat['freq/wl_suffix'] in c]
-            flux_cols = [ c for c in colnames if self.cat['flux_suffix'] in c]
-            flux_err_cols = [ c for c in colnames if self.cat['fluxerr_suffix'] in c]
-            ndflag_cols = [ c for c in colnames if self.cat['ndflag_suffix'] in c]
+            cols_names = [ c.replace(self.cat['freq/wl_suffix'],'') for c in colnames if self.cat['freq/wl_suffix'] in c]
+            wl_cols = [c+self.cat['freq/wl_suffix'] for c in cols_names]
+            flux_cols = [c+self.cat['flux_suffix'] for c in cols_names]
+            flux_err_cols = [c+self.cat['fluxerr_suffix'] for c in cols_names]
+            ndflag_cols = [c+self.cat['ndflag_suffix'] for c in cols_names]
+            #wl_cols = [ c for c in colnames if self.cat['freq/wl_suffix'] in c]
+            #flux_cols = [ c for c in colnames if self.cat['flux_suffix'] in c]
+            #flux_err_cols = [ c for c in colnames if self.cat['fluxerr_suffix'] in c]
+            #ndflag_cols = [ c for c in colnames if self.cat['ndflag_suffix'] in c]
+            
+            #print wl_cols
+            #print flux_cols
+            #print flux_err_cols
 
 
             freq_wl_cat_ALL = \

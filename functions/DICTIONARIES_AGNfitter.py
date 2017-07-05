@@ -53,9 +53,7 @@ class MODELSDICT:
         self.filterset = filters['Bandset']
         self.filters = filters
 
-    def build(self):
-
-        f = open(self.filename, 'wb')
+    def build(self, save=True):
 
         COSMOS_modelsdict = dict()
 
@@ -63,7 +61,8 @@ class MODELSDICT:
         print 'Constructing Dictionary of models.' 
         print '--------------------------------------'
         print 'Make sure the filterset contains all the photometric bands'
-        print 'needed by your catalog.'
+        print 'needed by your catalog '
+        print 'dictionar contains {n:d} redshifts'.format(n=len(self.z_array))
         print 'This process might take a while, but you have to do it only once.'
         print 'If you interrupt it, please trash the empty file created.'
         print ''
@@ -83,9 +82,17 @@ class MODELSDICT:
 
 
         print 'Dictionary has been created in :', self.filename
+        
+        if save:
 
-        cPickle.dump(COSMOS_modelsdict, f, protocol=2)
-        f.close()
+            with open(self.filename, 'wb') as f:
+                print 'Saving dict to : ',self.filename
+
+                cPickle.dump(COSMOS_modelsdict, f, protocol=2)
+                
+                print 'done'
+        else:
+            return COSMOS_modelsdict
 
 
 
@@ -331,6 +338,9 @@ def filter_dictionaries(filterset, path, filters):
     Yuvband_file = path + 'models/FILTERS/VISTA/Y_uv.res'
     Yuv_lambda, Yuv_factor =  np.loadtxt(Yuvband_file, usecols=(0,1),unpack= True)
 
+    Zuvband_file = path + 'models/FILTERS/VISTA/Z_uv.res'
+    Zuv_lambda, Zuv_factor =  np.loadtxt(Zuvband_file, usecols=(0,1),unpack= True)
+
     #CHFT ugriz
     uband_file_CHFT = path + 'models/FILTERS/CHFT/u_megaprime_sagem.res'
     u_lambda_CHFT, u_factor_CHFT =  np.loadtxt(uband_file_CHFT, usecols=(0,1),unpack= True)
@@ -391,7 +401,36 @@ def filter_dictionaries(filterset, path, filters):
     FUV_lambda, FUV_factor =  np.loadtxt(FUVband_file, usecols=(0,1),unpack= True)
 
 
-                
+    #NDWFS
+
+    ndwfs_Y_band_file = path + 'models/FILTERS/NDWFS/lbtY.filter.res'
+    ndwfs_Y_lambda, ndwfs_Y_factor =  np.loadtxt(ndwfs_Y_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_U_band_file = path + 'models/FILTERS/NDWFS/LBCBlue_Uspec.filter.res'
+    ndwfs_U_lambda, ndwfs_U_factor =  np.loadtxt(ndwfs_U_band_file, usecols=(0,1),unpack= True)
+
+    ndwfs_B_band_file = path + 'models/FILTERS/NDWFS/Bw_atmccd.filter.res'
+    ndwfs_B_lambda, ndwfs_B_factor =  np.loadtxt(ndwfs_B_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_R_band_file = path + 'models/FILTERS/NDWFS/R_atmccd.filter.res'
+    ndwfs_R_lambda, ndwfs_R_factor =  np.loadtxt(ndwfs_R_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_I_band_file = path + 'models/FILTERS/NDWFS/I_atmccd.filter.res'
+    ndwfs_I_lambda, ndwfs_I_factor =  np.loadtxt(ndwfs_I_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_J_band_file = path + 'models/FILTERS/NDWFS/jband.filter.res'
+    ndwfs_J_lambda, ndwfs_J_factor =  np.loadtxt(ndwfs_J_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_H_band_file = path + 'models/FILTERS/NDWFS/hband.filter.res'
+    ndwfs_H_lambda, ndwfs_H_factor =  np.loadtxt(ndwfs_H_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_K_band_file = path + 'models/FILTERS/NDWFS/kband.filter.res'
+    ndwfs_K_lambda, ndwfs_K_factor =  np.loadtxt(ndwfs_K_band_file, usecols=(0,1),unpack= True)
+    
+    ndwfs_z_band_file = path + 'models/FILTERS/SUBARU/z_subaru.res'
+    ndwfs_z_lambda, ndwfs_z_factor =  np.loadtxt(ndwfs_z_band_file, usecols=(0,1),unpack= True)
+
+
     if filterset == 'BANDSET_default':
 
 
@@ -423,7 +462,7 @@ def filter_dictionaries(filterset, path, filters):
             c=    2.997e8
             Angstrom = 1e10
 
-            central_lamb = lambdas[i][np.where(factors[i]==np.max(factors[i]))]
+            central_lamb = np.sum(lambdas[i]*factors[i])/np.sum(factors[i])
             central_nu = float(np.log10((Angstrom*c)/central_lamb))
 
             files_dict[central_nu].append(files[i])
@@ -535,7 +574,11 @@ def filter_dictionaries(filterset, path, filters):
         if filters['Y_VISTA']:
             files.append(Yuvband_file)
             lambdas.append(Yuv_lambda)
-            factors.append(Yuv_factor)    
+            factors.append(Yuv_factor)       
+        if filters['Z_VISTA']:
+            files.append(Zuvband_file)
+            lambdas.append(Zuv_lambda)
+            factors.append(Zuv_factor)     
 
         if filters['g_SUBARU']:
             files.append(gband_file)
@@ -611,8 +654,44 @@ def filter_dictionaries(filterset, path, filters):
         if filters['GALEX_1500']:
             files.append(FUVband_file)
             lambdas.append(FUV_lambda)
-            factors.append(FUV_factor)    
-
+            factors.append(FUV_factor)   
+            
+        if filters['Y_NDWFS']:
+            files.append(ndwfs_Y_band_file)
+            lambdas.append(ndwfs_Y_lambda)
+            factors.append(ndwfs_Y_factor) 
+        if filters['U_NDWFS']:
+            files.append(ndwfs_U_band_file)
+            lambdas.append(ndwfs_U_lambda)
+            factors.append(ndwfs_U_factor) 
+        if filters['B_NDWFS']:
+            files.append(ndwfs_B_band_file)
+            lambdas.append(ndwfs_B_lambda)
+            factors.append(ndwfs_B_factor) 
+        if filters['R_NDWFS']:
+            files.append(ndwfs_R_band_file)
+            lambdas.append(ndwfs_R_lambda)
+            factors.append(ndwfs_R_factor) 
+        if filters['I_NDWFS']:
+            files.append(ndwfs_I_band_file)
+            lambdas.append(ndwfs_I_lambda)
+            factors.append(ndwfs_I_factor) 
+        if filters['J_NDWFS']:
+            files.append(ndwfs_J_band_file)
+            lambdas.append(ndwfs_J_lambda)
+            factors.append(ndwfs_J_factor) 
+        if filters['H_NDWFS']:
+            files.append(ndwfs_H_band_file)
+            lambdas.append(ndwfs_H_lambda)
+            factors.append(ndwfs_H_factor) 
+        if filters['K_NDWFS']:
+            files.append(ndwfs_K_band_file)
+            lambdas.append(ndwfs_K_lambda)
+            factors.append(ndwfs_K_factor) 
+        if filters['z_NDWFS']:
+            files.append(ndwfs_z_band_file)
+            lambdas.append(ndwfs_z_lambda)
+            factors.append(ndwfs_z_factor) 
 
         # make dictionaries lambdas_dict, factors_dict
         files_dict = defaultdict(list)
@@ -620,6 +699,7 @@ def filter_dictionaries(filterset, path, filters):
         factors_dict = defaultdict(list)
         central_nu_list=[]        
 
+        #print len(files)
         for i in range(len(files)):
 
             c=    2.997e8
@@ -633,10 +713,13 @@ def filter_dictionaries(filterset, path, filters):
             factors_dict[central_nu].append(factors[i])
 
             central_nu_list.append(central_nu)
+            
+            #print i, central_nu
 
         central_nu_list = sorted(central_nu_list)
             
-    return central_nu_list, files_dict, lambdas_dict, factors_dict
+    #return central_nu_list, files_dict, lambdas_dict, factors_dict
+    return np.array(central_nu_list), files_dict, lambdas_dict, factors_dict
 
 
 

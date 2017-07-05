@@ -19,13 +19,14 @@ This script includes:
 
 """
 #PYTHON IMPORTS
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import rc, ticker
-#matplotlib.use('Agg')
 import sys, os
 import math 
 import numpy as np
-import triangle #Author: Dan Foreman-Mackey (danfm@nyu.edu)
+import corner #Author: Dan Foreman-Mackey (danfm@nyu.edu)
 import time
 import scipy
 from astropy import units as u
@@ -76,16 +77,6 @@ def main(data, P, out):
         fig.savefig(data.output_folder+str(data.name)+'/traces_mcmc.' + out['plot_format'])
         plt.close(fig)
 
-    if out['plot_posteriortriangle'] :
-        fig = output.plot_PDFtriangle('10pars', P.names)
-        fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_10pars.' + out['plot_format'])
-        plt.close(fig)
-
-    if out['plot_posteriortrianglewithluminosities']: 
-        fig = output.plot_PDFtriangle('int_lums', out['intlum_names']) 
-        fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_intlums.' + out['plot_format'])
-        plt.close(fig)
-
     if out['writepar_meanwitherrors']:
         outputvalues, outputvalues_header = output.write_parameters_outputvalues(P)
         comments_ouput= ' # Output for source ' +str(data.name) + '\n' +' Rows are: 2.5, 16, 50, 84, 97.5 percentiles # '+'\n'+ '-----------------------------------------------------'+'\n' 
@@ -95,6 +86,26 @@ def main(data, P, out):
         fig = output.plot_manyrealizations_SED()
         fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
         plt.close(fig)
+        
+    if out['save_chains']:
+        np.savez(data.output_folder+str(data.name)+'/PDFs_10pars'+str(data.name),labels=P.names, chain=output.chain.flatchain)
+        if out['calc_intlum']:
+            np.savez(data.output_folder+str(data.name)+'/PDFs_intlums'+str(data.name),labels=out['intlum_names'], chain=output.int_lums.T)
+        
+    if out['plot_posteriortriangle'] :
+        #try:
+        fig = output.plot_PDFtriangle('10pars', P.names)
+        fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_10pars_'+str(data.name)+'.' + out['plot_format'])
+        plt.close(fig)
+        #except:
+        #print 'Failed to plot pdf triangle'
+
+    if out['plot_posteriortrianglewithluminosities']: 
+        labels = [s.replace('_','\_') for s in out['intlum_names']]
+        fig = output.plot_PDFtriangle('int_lums', labels) 
+        fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_intlums_'+str(data.name)+'.' + out['plot_format'])
+        plt.close(fig)
+
 
 
 
@@ -154,7 +165,7 @@ class OUTPUT:
                                             np.transpose(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_others, [2.5,16, 50, 84,97.5], axis=0)))),
                                             np.transpose(np.percentile(self.chain.lnprob_flat, [2.5,16, 50, 84,97.5], axis=0)) ))  
 
-
+            #y=x
     
             outputvalues_header= ' '.join([ i for i in np.hstack((P.names, 'log Mstar', 'SFR_opt', self.out['intlum_names'], 'SFR_IR', '-ln_like'))] )
 
@@ -166,9 +177,9 @@ class OUTPUT:
     def plot_PDFtriangle(self,parameterset, labels):        
 
         if parameterset=='10pars':
-            figure = triangle.corner(self.chain.flatchain, labels= labels, plot_contours=True, plot_datapoints = False, show_titles=True, quantiles=[0.16, 0.50, 0.84])
+            figure = corner.corner(self.chain.flatchain, labels= labels, plot_contours=True, plot_datapoints = False, show_titles=True, quantiles=[0.16, 0.50, 0.84])
         elif parameterset == 'int_lums':
-            figure = triangle.corner(self.int_lums.T, labels= labels,   plot_contours=True, plot_datapoints = False, show_titles=True, quantiles=[0.16, 0.50, 0.84])
+            figure = corner.corner(self.int_lums.T, labels= labels,   plot_contours=True, plot_datapoints = False, show_titles=True, quantiles=[0.16, 0.50, 0.84])
         return figure
 
 
@@ -198,11 +209,17 @@ class OUTPUT:
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd = self.nuLnus
 
         #plotting settings
-        fig, ax1, ax2 = SED_plotting_settings(all_nus_rest, data_nuLnu_rest)
+        fig, ax1, ax2, axr = SED_plotting_settings2(all_nus_rest, data_nuLnu_rest)
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
         lw= 1.5
-
+        
+        alp = 0.25
+        if Nrealizations == 1:
+            alp = 1.0
         for i in range(Nrealizations):
+            
+            if i == Nrealizations -1:
+                alp = 1
 
             #Settings for model lines
             p2=ax1.plot(all_nus, SBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma", color= SBcolor, alpha = 0.5)
@@ -211,10 +228,13 @@ class OUTPUT:
             p5=ax1.plot( all_nus, TOnuLnu[i], marker="None",  linewidth=lw, label="1 /sigma",color= TOcolor ,alpha = 0.5)
             p1= ax1.plot( all_nus, TOTALnuLnu[i], marker="None", linewidth=lw,  label="1 /sigma", color= TOTALcolor, alpha= 0.5)
 
-            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
-
             det = [yndflags==1]
             upp = [yndflags==0]
+            
+            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
+            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][det])/data_errors_rest[det],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
+            
+
 
             upplimits = ax1.errorbar(data_nus[upp], 2.*data_nuLnu_rest[upp], yerr= data_errors_rest[upp]/2, uplims = True, linestyle='',  markersize=5, color="black")
             (_, caps, _) = ax1.errorbar(data_nus[det], data_nuLnu_rest[det], yerr= data_errors_rest[det], capsize=4, linestyle="None", linewidth=1.5,  marker='o',markersize=5, color="black", alpha = 1)
@@ -374,7 +394,17 @@ class FLUXES_ARRAYS:
         source = data.name
 
         if self.output_type == 'plot':
-            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2plot'])),:].T
+            
+            self.chain_obj.props()
+            t = self.chain_obj.best_fit_pars
+            tarr = [np.array([ti]) for ti in t]
+            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= tarr
+            
+            if self.out['realizations2plot'] > 1:
+                tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2plot'])),:].T
+                # replace last one with most prob
+                tau[-1], agelog[-1], nh[-1], irlum[-1], SB[-1] ,BB[-1], GA[-1],TO[-1], BBebv[-1], GAebv[-1]= t
+                
         elif self.output_type == 'int_lums':
             tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2int'])),:].T
         elif self.output_type == 'best_fit':
@@ -533,6 +563,70 @@ Some stand-alone functions on the SED plot format
 """
 
 
+def SED_plotting_settings2(x, ydata):
+
+    """
+    This function produces the setting for the figures for SED plotting.
+    **Input:
+    - all nus, and data (to make the plot limits depending on the data)
+    """
+    fig = plt.figure()
+    ax1 = fig.add_axes([0.1,0.3,0.8,0.6])
+    ax2 = ax1.twiny()
+    axr = fig.add_axes([0.1,0.1,0.8,0.2],sharex=ax1)
+    #axr = fig.add_axes([0.1,0.1,0.8,0.2])
+
+    #-- Latex -------------------------------------------------
+    rc('text', usetex=True)
+    rc('font', family='serif')
+    rc('axes', linewidth=1.5)
+    #-------------------------------------------------------------
+
+    #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')   
+    ax1.xaxis.set_visible(False)
+    axr.set_xlabel(r'rest-frame ${\log \  \nu}$ $[\mathrm{Hz}] $', fontsize=13)
+    ax2.set_xlabel(r'${\lambda}$ $[\mathrm{\mu m}] $', fontsize=13)
+    ax1.set_ylabel(r'$\nu L(\nu)$ $[\mathrm{erg\ s}^{-1}]$',fontsize=13)
+    axr.set_ylabel(r'residual $[\sigma]$',fontsize=13)
+
+    #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
+    #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
+
+    axr.set_autoscalex_on(True) 
+    ax1.set_autoscalex_on(True) 
+    ax1.set_autoscaley_on(True) 
+    ax1.set_xscale('linear')
+    axr.set_xscale('linear')
+    ax1.set_yscale('log')
+
+
+    mediandata = np.median(ydata)
+    mindata = np.min(ydata)
+    maxdata = np.max(ydata)
+    #ax1.set_ylim(mediandata /50.,mediandata * 50.)
+    ax1.set_ylim(mindata /10.,maxdata * 10.)
+
+    ax2.set_xscale('log')
+    ax2.set_yscale('log')
+    #ax2.set_ylim( mediandata /50., mediandata * 50.)
+    ax2.set_ylim( mindata /10., maxdata * 10.)
+
+
+    ax2.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
+    #ax2.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
+    #ax2.tick_params(axis='both',reset=False,which='minor',length=4,width=1.5)
+
+    x2 = (2.98e14/ x)[::-1] # Wavelenght axis
+    xr = np.log10(x[::-1]) # frequency axis
+
+    axr.plot(xr, np.zeros(len(xr)), 'gray', alpha=1)
+    ax2.plot(x2, np.ones(len(x2)), alpha=0)
+    ax2.invert_xaxis()
+    ax2.set_xticks([100., 10.,1., 0.1]) 
+
+
+    return fig, ax1, ax2, axr
+
 
 def SED_plotting_settings(x, ydata):
 
@@ -552,9 +646,9 @@ def SED_plotting_settings(x, ydata):
     #-------------------------------------------------------------
 
     #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')    
-    ax1.set_xlabel(r'rest-frame $\mathbf{log \  \nu} [\mathtt{Hz}] $', fontsize=13)
-    ax2.set_xlabel(r'$\mathbf{\lambda} [\mathtt{\mu m}] $', fontsize=13)
-    ax1.set_ylabel(r'$\mathbf{\nu L(\nu) [\mathtt{erg \ } \mathtt{ s}^{-1}]}$',fontsize=13)
+    ax1.set_xlabel(r'rest-frame ${\log \  \nu} [\mathrm{Hz}] $', fontsize=13)
+    ax2.set_xlabel(r'${\lambda} [\mathrm{\mu m}] $', fontsize=13)
+    ax1.set_ylabel(r'${\nu L(\nu) [\mathrm{erg \ } \mathrm{ s}^{-1}]}$',fontsize=13)
 
     ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
     ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.5)
@@ -566,11 +660,15 @@ def SED_plotting_settings(x, ydata):
 
 
     mediandata = np.median(ydata)
-    ax1.set_ylim(mediandata /50.,mediandata * 50.)
+    mindata = np.min(ydata)
+    maxdata = np.max(ydata)
+    #ax1.set_ylim(mediandata /50.,mediandata * 50.)
+    ax1.set_ylim(mindata /10.,maxdata * 10.)
 
     ax2.set_xscale('log')
     ax2.set_yscale('log')
-    ax2.set_ylim( mediandata /50., mediandata * 50.)
+    #ax2.set_ylim( mediandata /50., mediandata * 50.)
+    ax2.set_ylim( mindata /10., maxdata * 10.)
 
 
     ax2.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
