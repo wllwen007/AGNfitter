@@ -146,7 +146,8 @@ class MODEL:
 
         if self.component== 'galaxy':
 
-            self.wave,self.tau, self.tg,self.SED, self.SFR = cPickle.load(file(self.path + 'models/GALAXY/bc03_275templates_files.pickle', 'rb')) 
+            #self.wave,self.tau, self.tg,self.SED, self.SFR = cPickle.load(file(self.path + 'models/GALAXY/bc03_275templates_files.pickle', 'rb')) 
+            self.wave,self.tau, self.tg,self.SED, self.SFR = cPickle.load(file(self.path + 'models/GALAXY/bc03_840templates_files.pickle', 'rb')) 
 
 
         if self.component== 'torus':
@@ -200,7 +201,8 @@ def construct(path):
 
     GA = MODEL('galaxy', path)
     GA.build()
-    f2 = open(path + 'models/GALAXY/bc03_275templates.pickle', 'wb')
+    #f2 = open(path + 'models/GALAXY/bc03_275templates.pickle', 'wb')
+    f2 = open(path + 'models/GALAXY/bc03_840templates.pickle', 'wb')
     cPickle.dump(GA, f2, protocol=2)
     f2.close()
 
