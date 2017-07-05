@@ -37,7 +37,6 @@ class DATA_all:
     and gives it to the class DATA, which administrates it for each sourceline.
     
     input: catalogname
-    bugs: Not ready to read FITS yet.
 
     """
 
@@ -152,6 +151,7 @@ class DATA_all:
             wl_cols = [ c for c in colnames if self.cat['freq/wl_suffix'] in c]
             flux_cols = [ c for c in colnames if self.cat['flux_suffix'] in c]
             flux_err_cols = [ c for c in colnames if self.cat['fluxerr_suffix'] in c]
+            ndflag_cols = [ c for c in colnames if self.cat['ndflag_suffix'] in c]
 
 
             freq_wl_cat_ALL = \
@@ -161,7 +161,7 @@ class DATA_all:
             fluxerr_cat_ALL = \
                 np.array([fitstable[ce] for ce in flux_err_cols ])*self.cat['flux_unit']
             if self.cat['ndflag_bool'] == True: 
-                ndflag_cat_ALL = np.array(fitstable[self.cat['ndflag_list']])
+                ndflag_cat_ALL = np.array([fitstable[f] for f in ndflag_cols ])
 
             nus_l=[]
             fluxes_l=[]
