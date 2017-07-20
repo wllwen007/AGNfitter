@@ -276,7 +276,7 @@ class OUTPUT:
             upp = [yndflags==0]
             
             p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =alp)
-            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
+            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
             
 
 
@@ -363,30 +363,32 @@ class CHAIN:
         self.nwalkers, nsample, npar = self.chain.shape
         nrows = npar + 1
         ncols =1     
+        width=13
 
-        def fig_axes(nrows, ncols, npar, width=13):
-            fig = plt.figure(figsize=(width, width*1.6))#*nrows/ncols))    
-            fig.subplots_adjust(hspace=0.9)
-            axes = [fig.add_subplot(nrows, ncols, i+1) for i in range(npar)]
-            return fig, axes
+        #def fig_axes(nrows, ncols, npar, width=13):
+            #fig = plt.figure(figsize=(width, width*1.6))#*nrows/ncols))    
+            #axes = [fig.add_subplot(nrows, ncols, i+1) for i in range(npar)]
+            #return fig, axes
+        fig, axes = plt.subplots(nrows, ncols, sharex=True, figsize=(width, width*1.6))
+        fig.subplots_adjust(hspace=0.1,left=0.05,right=0.95,top=0.95,bottom=0.05)
 
-        fig, axes = fig_axes(nrows, ncols, npar+1)
+        #fig, axes = fig_axes(nrows, ncols, npar+1)
 
         nwplot = min(nsample, nwplot)
         for i in range(npar):
             ax = axes[i]
             for j in range(0, self.nwalkers, max(1, self.nwalkers // nwplot)):
                 ax.plot(self.chain[j,:,i], lw=0.5,  color = 'black', alpha = 0.3)
-            ax.set_title(r'\textit{Parameter : }'+P.names[i], fontsize=12)  
-            ax.set_xlabel(r'\textit{Steps}', fontsize=12)
-            ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
+            ax.set_ylabel(P.names[i], fontsize=12)  
+            #ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
+        #ax.set_xlabel(r'\textit{Steps}', fontsize=12)
 
         ax = axes[-1]
         for j in range(0, self.nwalkers, max(1, self.nwalkers // nwplot)):
             ax.plot(self.lnprob[j,:], lw=0.5, color = 'black', alpha = 0.3)
-        ax.set_title(r'\textit{Likelihood}', fontsize=12)   
-        ax.set_xlabel(r'\textit{Steps}', fontsize=12)
-        ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
+        ax.set_ylabel(r'Likelihood', fontsize=12)   
+        ax.set_xlabel(r'Steps', fontsize=12)
+        #ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
 
         return fig, nwplot
 
