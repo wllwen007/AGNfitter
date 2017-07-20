@@ -79,7 +79,7 @@ def main(data, P, out):
 
     if out['writepar_meanwitherrors']:
         outputvalues, outputvalues_header = output.write_parameters_outputvalues(P)
-        comments_ouput= ' # Output for source ' +str(data.name) + '\n' +' Rows are: 2.5, 16, 50, 84, 97.5 percentiles # '+'\n'+ '-----------------------------------------------------'+'\n' 
+        comments_ouput= ' # Output for source ' +str(data.name) + '\n' +' Rows are: 2.5, 16, 50, 84, 97.5 percentiles, max likelihood # '+'\n'+ '-----------------------------------------------------'+'\n' 
         np.savetxt(data.output_folder + str(data.name)+'/parameter_outvalues_'+str(data.name)+'.txt' , outputvalues, delimiter = " ",fmt= "%1.4f" ,header= outputvalues_header, comments =comments_ouput)
 
     if out['plotSEDrealizations']:
