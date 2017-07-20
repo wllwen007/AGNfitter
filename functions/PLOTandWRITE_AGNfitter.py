@@ -141,6 +141,7 @@ class OUTPUT:
             self.nuLnus = fluxobj_withintlums.nuLnus4plotting
             self.allnus = fluxobj_withintlums.all_nus_rest
             self.int_lums = fluxobj_withintlums.int_lums
+            self.int_lums_best = fluxobj_withintlums.int_lums_best
 
         if self.out['plotSEDrealizations']:
             fluxobj_4SEDplots.fluxes(self.data)
@@ -148,7 +149,48 @@ class OUTPUT:
             self.filtered_modelpoints_nuLnu = fluxobj_4SEDplots.filtered_modelpoints_nuLnu
             self.allnus = fluxobj_4SEDplots.all_nus_rest
 
+
     def write_parameters_outputvalues(self, P):        
+
+
+        Mstar0, SFR_opt0 = model.stellar_info_array(np.array([self.chain.best_fit_pars]), self.data, 1)
+        Mstar, SFR_opt = model.stellar_info_array(self.chain.flatchain_sorted, self.data, self.out['realizations2int'])
+        column_names = np.transpose(np.array(["P025","P16","P50","P84","P975"], dtype='|S3'))
+        chain_pars_best = np.hstack((self.chain.best_fit_pars, Mstar0, SFR_opt0))
+        chain_pars = np.column_stack((self.chain.flatchain_sorted, Mstar, SFR_opt))        
+                                            # np.mean(chain_pars, axis[0]),
+                                            # np.std(chain_pars, axis[0]),
+        if self.out['calc_intlum']:            
+
+            
+
+            SFR_IR = model.sfr_IR(self.int_lums[0]) #check that ['intlum_names'][0] is always L_IR(8-100)  
+            SFR_IR_best = model.sfr_IR(np.array([self.int_lums_best[0]])) #check that ['intlum_names'][0] is always L_IR(8-100)         
+
+            chain_others =np.column_stack((self.int_lums.T, SFR_IR))
+            chain_others_best =np.hstack((self.int_lums_best.T, SFR_IR_best))
+            
+            outputvalues = np.column_stack((np.transpose(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_pars, [2.5,16, 50, 84,97.5], axis=0)))),
+                                            np.transpose(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_others, [2.5,16, 50, 84,97.5], axis=0)))),
+                                            np.transpose(np.percentile(self.chain.lnprob_flat, [2.5,16, 50, 84,97.5], axis=0)) ))  
+            print chain_pars_best
+            print chain_others_best
+            print np.max(self.chain.lnprob_flat)
+            
+            outputvalues_best = np.hstack( (chain_pars_best, chain_others_best, np.max(self.chain.lnprob_flat)) )
+            outputvalues = np.vstack((outputvalues, outputvalues_best))
+            
+
+            #y=x
+    
+            outputvalues_header= ' '.join([ i for i in np.hstack((P.names, 'log Mstar', 'SFR_opt', self.out['intlum_names'], 'SFR_IR', '-ln_like'))] )
+
+        else:
+            outputvalues = np.column_stack((map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), zip(*np.percentile(chain_pars, [16, 50, 84],  axis=0))))) 
+            outputvalues_header=' '.join( [ i for i in P.names] )
+        return outputvalues, outputvalues_header
+
+    def write_parameters_outputvalues1(self, P):        
 
         Mstar, SFR_opt = model.stellar_info_array(self.chain.flatchain_sorted, self.data, self.out['realizations2int'])
         column_names = np.transpose(np.array(["P025","P16","P50","P84","P975"], dtype='|S3'))
@@ -211,28 +253,30 @@ class OUTPUT:
         #plotting settings
         fig, ax1, ax2, axr = SED_plotting_settings2(all_nus_rest, data_nuLnu_rest)
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
-        lw= 1.5
+        lw= 1.
         
         alp = 0.25
         if Nrealizations == 1:
             alp = 1.0
         for i in range(Nrealizations):
             
+            # last one is the max likelihood fit
             if i == Nrealizations -1:
                 alp = 1
+                lw = 2
 
             #Settings for model lines
-            p2=ax1.plot(all_nus, SBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma", color= SBcolor, alpha = 0.5)
-            p3=ax1.plot(all_nus, BBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma",color= BBcolor, alpha = 0.5)
-            p4=ax1.plot(all_nus, GAnuLnu[i],marker="None", linewidth=lw, label="1 /sigma",color=GAcolor, alpha = 0.5)
-            p5=ax1.plot( all_nus, TOnuLnu[i], marker="None",  linewidth=lw, label="1 /sigma",color= TOcolor ,alpha = 0.5)
-            p1= ax1.plot( all_nus, TOTALnuLnu[i], marker="None", linewidth=lw,  label="1 /sigma", color= TOTALcolor, alpha= 0.5)
+            p2=ax1.plot(all_nus, SBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma", color= SBcolor, alpha = alp)
+            p3=ax1.plot(all_nus, BBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma",color= BBcolor, alpha = alp)
+            p4=ax1.plot(all_nus, GAnuLnu[i],marker="None", linewidth=lw, label="1 /sigma",color=GAcolor, alpha = alp)
+            p5=ax1.plot( all_nus, TOnuLnu[i], marker="None",  linewidth=lw, label="1 /sigma",color= TOcolor ,alpha = alp)
+            p1= ax1.plot( all_nus, TOTALnuLnu[i], marker="None", linewidth=lw,  label="1 /sigma", color= TOTALcolor, alpha= alp)
 
             det = [yndflags==1]
             upp = [yndflags==0]
             
-            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
-            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][det])/data_errors_rest[det],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
+            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =alp)
+            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
             
 
 
@@ -240,8 +284,11 @@ class OUTPUT:
             (_, caps, _) = ax1.errorbar(data_nus[det], data_nuLnu_rest[det], yerr= data_errors_rest[det], capsize=4, linestyle="None", linewidth=1.5,  marker='o',markersize=5, color="black", alpha = 1)
 
 
-        ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
+        ax1.text(0.04, 0.92, r'XID='+str(self.data.name)+r', z ='+ str(self.z), ha='left', transform=ax1.transAxes )
+        ax1.text(0.96, 0.92, 'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), ha='right', transform=ax1.transAxes )
+        #ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z)+'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
         print ' => SEDs of '+ str(Nrealizations)+' different realization were plotted.'
+
 
         return fig
 
@@ -401,14 +448,23 @@ class FLUXES_ARRAYS:
             tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= tarr
             
             if self.out['realizations2plot'] > 1:
-                tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2plot'])),:].T
+                tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample+1, (self.out['realizations2plot'])),:].T
                 # replace last one with most prob
                 tau[-1], agelog[-1], nh[-1], irlum[-1], SB[-1] ,BB[-1], GA[-1],TO[-1], BBebv[-1], GAebv[-1]= t
                 
         elif self.output_type == 'int_lums':
-            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2int'])),:].T
+            
+            self.chain_obj.props()
+            t = self.chain_obj.best_fit_pars
+            
+            
+            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample+1, (self.out['realizations2int'])),:].T
+            # replace last one with most prob
+            tau[-1], agelog[-1], nh[-1], irlum[-1], SB[-1] ,BB[-1], GA[-1],TO[-1], BBebv[-1], GAebv[-1]= t
+            
+            
         elif self.output_type == 'best_fit':
-            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.best_fit_pars
+            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.best_fit_pars
 
         age = 10**agelog
 
@@ -493,9 +549,15 @@ class FLUXES_ARRAYS:
             self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
         #Only if calculating integrated luminosities:    
         elif self.output_type == 'int_lums':
-            self.int_lums= np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
+            int_lums = np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
+            self.int_lums = int_lums[:,:-1]  # all except last one which is best fit
+            
+
+            self.int_lums_best = int_lums[:,-1]  # last one
         # elif self.output_type == 'best_fit':
         #     self.filtered_modelpoints_nuLnu = self.FLUXES2nuLnu_4plotting(all_nus_rest,  filtered_modelpoints, self.chain_obj.data.z)
+        
+        
 
 
     def FLUXES2nuLnu_4plotting(self, all_nus_rest, FLUXES4plotting, z):
@@ -533,7 +595,7 @@ class FLUXES_ARRAYS:
         """
 
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd =nuLnus4plotting
-        out['intlum_freqranges'] = (out['intlum_freqranges']*out['intlum_freqranges_unit']).to(u.Hz, equivalencies=u.spectral())
+        intlum_freqranges = (out['intlum_freqranges']*out['intlum_freqranges_unit']).to(u.Hz, equivalencies=u.spectral())
         int_lums = []
         for m in range(len(out['intlum_models'])):
 
@@ -548,7 +610,7 @@ class FLUXES_ARRAYS:
             elif out['intlum_models'][m] == 'tor':    
                  nuLnu=TOnuLnu
         
-            index  = ((all_nus_rest >= np.log10(out['intlum_freqranges'][m][1].value)) & (all_nus_rest<= np.log10(out['intlum_freqranges'][m][0].value)))            
+            index  = ((all_nus_rest >= np.log10(intlum_freqranges[m][1].value)) & (all_nus_rest<= np.log10(intlum_freqranges[m][0].value)))            
             all_nus_rest_int = 10**(all_nus_rest[index])
             Lnu = nuLnu[:,index] / all_nus_rest_int
             Lnu_int = scipy.integrate.trapz(Lnu, x=all_nus_rest_int)
