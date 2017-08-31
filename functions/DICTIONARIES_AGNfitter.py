@@ -62,7 +62,7 @@ class MODELSDICT:
         print '--------------------------------------'
         print 'Make sure the filterset contains all the photometric bands'
         print 'needed by your catalog '
-        print 'dictionar contains {n:d} redshifts'.format(n=len(self.z_array))
+        print 'dictionary contains {n:d} redshifts'.format(n=len(self.z_array))
         print 'This process might take a while, but you have to do it only once.'
         print 'If you interrupt it, please trash the empty file created.'
         print ''
