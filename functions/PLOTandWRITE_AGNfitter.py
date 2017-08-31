@@ -365,14 +365,8 @@ class CHAIN:
         ncols =1     
         width=13
 
-        #def fig_axes(nrows, ncols, npar, width=13):
-            #fig = plt.figure(figsize=(width, width*1.6))#*nrows/ncols))    
-            #axes = [fig.add_subplot(nrows, ncols, i+1) for i in range(npar)]
-            #return fig, axes
         fig, axes = plt.subplots(nrows, ncols, sharex=True, figsize=(width, width*1.6))
         fig.subplots_adjust(hspace=0.1,left=0.05,right=0.95,top=0.95,bottom=0.05)
-
-        #fig, axes = fig_axes(nrows, ncols, npar+1)
 
         nwplot = min(nsample, nwplot)
         for i in range(npar):
@@ -380,8 +374,6 @@ class CHAIN:
             for j in range(0, self.nwalkers, max(1, self.nwalkers // nwplot)):
                 ax.plot(self.chain[j,:,i], lw=0.5,  color = 'black', alpha = 0.3)
             ax.set_ylabel(P.names[i], fontsize=12)  
-            #ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
-        #ax.set_xlabel(r'\textit{Steps}', fontsize=12)
 
         ax = axes[-1]
         for j in range(0, self.nwalkers, max(1, self.nwalkers // nwplot)):
@@ -661,6 +653,7 @@ def SED_plotting_settings2(x, ydata):
     ax1.set_autoscaley_on(True) 
     ax1.set_xscale('linear')
     axr.set_xscale('linear')
+    axr.minorticks_on()
     ax1.set_yscale('log')
 
 
