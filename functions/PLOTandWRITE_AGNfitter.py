@@ -87,11 +87,6 @@ def main(data, P, out):
         fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
         plt.close(fig)
         
-    if out['save_chains']:
-        np.savez(data.output_folder+str(data.name)+'/PDFs_10pars'+str(data.name),labels=P.names, chain=output.chain.flatchain)
-        if out['calc_intlum']:
-            np.savez(data.output_folder+str(data.name)+'/PDFs_intlums'+str(data.name),labels=out['intlum_names'], chain=output.int_lums.T)
-        
     if out['plot_posteriortriangle'] :
         #try:
         fig = output.plot_PDFtriangle('10pars', P.names)
