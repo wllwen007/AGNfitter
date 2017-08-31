@@ -718,7 +718,6 @@ def filter_dictionaries(filterset, path, filters):
 
         central_nu_list = sorted(central_nu_list)
             
-    #return central_nu_list, files_dict, lambdas_dict, factors_dict
     return np.array(central_nu_list), files_dict, lambdas_dict, factors_dict
 
 
