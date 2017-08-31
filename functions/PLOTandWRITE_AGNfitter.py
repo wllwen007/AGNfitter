@@ -251,7 +251,7 @@ class OUTPUT:
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd = self.nuLnus
 
         #plotting settings
-        fig, ax1, ax2, axr = SED_plotting_settings2(all_nus_rest, data_nuLnu_rest)
+        fig, ax1, ax2, axr = SED_plotting_settings_ar(all_nus_rest, data_nuLnu_rest)
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
         lw= 1.
         
@@ -619,7 +619,7 @@ Some stand-alone functions on the SED plot format
 """
 
 
-def SED_plotting_settings2(x, ydata):
+def SED_plotting_settings_ar(x, ydata):
 
     """
     This function produces the setting for the figures for SED plotting.
