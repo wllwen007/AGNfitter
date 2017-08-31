@@ -207,4 +207,6 @@ def OUTPUT_settings():
 
     out['plotSEDrealizations'] = True
 
+    out['save_chains'] = False
+    
     return out
