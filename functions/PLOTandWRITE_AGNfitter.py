@@ -349,7 +349,7 @@ class CHAIN:
         """ Plot the sample trace for a subset of walkers for each parameter.
         """
         #-- Latex -------------------------------------------------
-        rc('text', usetex=True)
+        #rc('text', usetex=True)
         rc('font', family='serif')
         rc('axes', linewidth=1.5)
         #-------------------------------------------------------------
@@ -628,7 +628,7 @@ def SED_plotting_settings_ar(x, ydata):
     #axr = fig.add_axes([0.1,0.1,0.8,0.2])
 
     #-- Latex -------------------------------------------------
-    rc('text', usetex=True)
+    #rc('text', usetex=True)
     rc('font', family='serif')
     rc('axes', linewidth=1.5)
     #-------------------------------------------------------------
@@ -692,7 +692,7 @@ def SED_plotting_settings(x, ydata):
     ax2 = ax1.twiny()
 
     #-- Latex -------------------------------------------------
-    rc('text', usetex=True)
+    #rc('text', usetex=True)
     rc('font', family='serif')
     rc('axes', linewidth=1.5)
     #-------------------------------------------------------------
