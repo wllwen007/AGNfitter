@@ -79,11 +79,11 @@ def main(data, P, out):
 
     if out['writepar_meanwitherrors']:
         outputvalues, outputvalues_header = output.write_parameters_outputvalues(P)
-        comments_ouput= ' # Output for source ' +str(data.name) + '\n' +' Rows are: 2.5, 16, 50, 84, 97.5 percentiles # '+'\n'+ '-----------------------------------------------------'+'\n' 
+        comments_ouput= ' # Output for source ' +str(data.name) + '\n' +' Rows are: 2.5, 16, 50, 84, 97.5 percentiles, max likelihood # '+'\n'+ '-----------------------------------------------------'+'\n' 
         np.savetxt(data.output_folder + str(data.name)+'/parameter_outvalues_'+str(data.name)+'.txt' , outputvalues, delimiter = " ",fmt= "%1.4f" ,header= outputvalues_header, comments =comments_ouput)
 
     if out['plotSEDrealizations']:
-        fig = output.plot_manyrealizations_SED()
+        fig = output.plot_manyrealizations_SED(plot_residuals=out['plot_residuals'])
         fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
         plt.close(fig)
         
@@ -101,7 +101,8 @@ def main(data, P, out):
         #print 'Failed to plot pdf triangle'
 
     if out['plot_posteriortrianglewithluminosities']: 
-        labels = [s.replace('_','\_') for s in out['intlum_names']]
+        #labels = [s.replace('_','\_') for s in out['intlum_names']]
+        labels = [s for s in out['intlum_names']]
         fig = output.plot_PDFtriangle('int_lums', labels) 
         fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_intlums_'+str(data.name)+'.' + out['plot_format'])
         plt.close(fig)
@@ -141,6 +142,7 @@ class OUTPUT:
             self.nuLnus = fluxobj_withintlums.nuLnus4plotting
             self.allnus = fluxobj_withintlums.all_nus_rest
             self.int_lums = fluxobj_withintlums.int_lums
+            self.int_lums_best = fluxobj_withintlums.int_lums_best
 
         if self.out['plotSEDrealizations']:
             fluxobj_4SEDplots.fluxes(self.data)
@@ -149,6 +151,46 @@ class OUTPUT:
             self.allnus = fluxobj_4SEDplots.all_nus_rest
 
     def write_parameters_outputvalues(self, P):        
+
+
+        Mstar0, SFR_opt0 = model.stellar_info_array(np.array([self.chain.best_fit_pars]), self.data, 1)
+        Mstar, SFR_opt = model.stellar_info_array(self.chain.flatchain_sorted, self.data, self.out['realizations2int'])
+        column_names = np.transpose(np.array(["P025","P16","P50","P84","P975"], dtype='|S3'))
+        chain_pars_best = np.hstack((self.chain.best_fit_pars, Mstar0, SFR_opt0))
+        chain_pars = np.column_stack((self.chain.flatchain_sorted, Mstar, SFR_opt))        
+                                            # np.mean(chain_pars, axis[0]),
+                                            # np.std(chain_pars, axis[0]),
+        if self.out['calc_intlum']:            
+
+            
+
+            SFR_IR = model.sfr_IR(self.int_lums[0]) #check that ['intlum_names'][0] is always L_IR(8-100)  
+            SFR_IR_best = model.sfr_IR(np.array([self.int_lums_best[0]])) #check that ['intlum_names'][0] is always L_IR(8-100)         
+
+            chain_others =np.column_stack((self.int_lums.T, SFR_IR))
+            chain_others_best =np.hstack((self.int_lums_best.T, SFR_IR_best))
+            
+            outputvalues = np.column_stack((np.transpose(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_pars, [2.5,16, 50, 84,97.5], axis=0)))),
+                                            np.transpose(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_others, [2.5,16, 50, 84,97.5], axis=0)))),
+                                            np.transpose(np.percentile(self.chain.lnprob_flat, [2.5,16, 50, 84,97.5], axis=0)) ))  
+            print chain_pars_best
+            print chain_others_best
+            print np.max(self.chain.lnprob_flat)
+            
+            outputvalues_best = np.hstack( (chain_pars_best, chain_others_best, np.max(self.chain.lnprob_flat)) )
+            outputvalues = np.vstack((outputvalues, outputvalues_best))
+            
+
+            #y=x
+    
+            outputvalues_header= ' '.join([ i for i in np.hstack((P.names, 'log Mstar', 'SFR_opt', self.out['intlum_names'], 'SFR_IR', '-ln_like'))] )
+
+        else:
+            outputvalues = np.column_stack((map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), zip(*np.percentile(chain_pars, [16, 50, 84],  axis=0))))) 
+            outputvalues_header=' '.join( [ i for i in P.names] )
+        return outputvalues, outputvalues_header
+
+    def write_parameters_outputvalues1(self, P):        
 
         Mstar, SFR_opt = model.stellar_info_array(self.chain.flatchain_sorted, self.data, self.out['realizations2int'])
         column_names = np.transpose(np.array(["P025","P16","P50","P84","P975"], dtype='|S3'))
@@ -183,7 +225,7 @@ class OUTPUT:
         return figure
 
 
-    def plot_manyrealizations_SED(self):    
+    def plot_manyrealizations_SED(self, plot_residuals=True):    
 
 
         #reading from valid data from object data
@@ -209,30 +251,36 @@ class OUTPUT:
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd = self.nuLnus
 
         #plotting settings
-        fig, ax1, ax2, axr = SED_plotting_settings2(all_nus_rest, data_nuLnu_rest)
+        if plot_residuals:
+            fig, ax1, ax2, axr = SED_plotting_settings_ar(all_nus_rest, data_nuLnu_rest)
+        else:
+            fig, ax1, ax2 = SED_plotting_settings(all_nus_rest, data_nuLnu_rest)
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
-        lw= 1.5
+        lw= 1.
         
         alp = 0.25
         if Nrealizations == 1:
             alp = 1.0
         for i in range(Nrealizations):
             
+            # last one is the max likelihood fit
             if i == Nrealizations -1:
                 alp = 1
+                lw = 2
 
             #Settings for model lines
-            p2=ax1.plot(all_nus, SBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma", color= SBcolor, alpha = 0.5)
-            p3=ax1.plot(all_nus, BBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma",color= BBcolor, alpha = 0.5)
-            p4=ax1.plot(all_nus, GAnuLnu[i],marker="None", linewidth=lw, label="1 /sigma",color=GAcolor, alpha = 0.5)
-            p5=ax1.plot( all_nus, TOnuLnu[i], marker="None",  linewidth=lw, label="1 /sigma",color= TOcolor ,alpha = 0.5)
-            p1= ax1.plot( all_nus, TOTALnuLnu[i], marker="None", linewidth=lw,  label="1 /sigma", color= TOTALcolor, alpha= 0.5)
+            p2=ax1.plot(all_nus, SBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma", color= SBcolor, alpha = alp)
+            p3=ax1.plot(all_nus, BBnuLnu[i], marker="None", linewidth=lw, label="1 /sigma",color= BBcolor, alpha = alp)
+            p4=ax1.plot(all_nus, GAnuLnu[i],marker="None", linewidth=lw, label="1 /sigma",color=GAcolor, alpha = alp)
+            p5=ax1.plot( all_nus, TOnuLnu[i], marker="None",  linewidth=lw, label="1 /sigma",color= TOcolor ,alpha = alp)
+            p1= ax1.plot( all_nus, TOTALnuLnu[i], marker="None", linewidth=lw,  label="1 /sigma", color= TOTALcolor, alpha= alp)
 
             det = [yndflags==1]
             upp = [yndflags==0]
             
-            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
-            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][det])/data_errors_rest[det],   marker='o', linestyle="None",markersize=5, color="red", alpha =0.7)
+            p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =alp)
+            if plot_residuals:
+                p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
             
 
 
@@ -240,7 +288,10 @@ class OUTPUT:
             (_, caps, _) = ax1.errorbar(data_nus[det], data_nuLnu_rest[det], yerr= data_errors_rest[det], capsize=4, linestyle="None", linewidth=1.5,  marker='o',markersize=5, color="black", alpha = 1)
 
 
-        ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
+        ax1.text(0.04, 0.92, r'id='+str(self.data.name)+r', z ='+ str(self.z), ha='left', transform=ax1.transAxes )
+        if plot_residuals:
+            ax1.text(0.96, 0.92, 'max ln-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), ha='right', transform=ax1.transAxes )
+        #ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z)+'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
         print ' => SEDs of '+ str(Nrealizations)+' different realization were plotted.'
 
         return fig
@@ -307,7 +358,7 @@ class CHAIN:
         """ Plot the sample trace for a subset of walkers for each parameter.
         """
         #-- Latex -------------------------------------------------
-        rc('text', usetex=True)
+        #rc('text', usetex=True)
         rc('font', family='serif')
         rc('axes', linewidth=1.5)
         #-------------------------------------------------------------
@@ -316,30 +367,24 @@ class CHAIN:
         self.nwalkers, nsample, npar = self.chain.shape
         nrows = npar + 1
         ncols =1     
+        width=13
 
-        def fig_axes(nrows, ncols, npar, width=13):
-            fig = plt.figure(figsize=(width, width*1.6))#*nrows/ncols))    
-            fig.subplots_adjust(hspace=0.9)
-            axes = [fig.add_subplot(nrows, ncols, i+1) for i in range(npar)]
-            return fig, axes
-
-        fig, axes = fig_axes(nrows, ncols, npar+1)
+        fig, axes = plt.subplots(nrows, ncols, sharex=True, figsize=(width, width*1.6))
+        fig.subplots_adjust(hspace=0.1,left=0.05,right=0.95,top=0.95,bottom=0.05)
 
         nwplot = min(nsample, nwplot)
         for i in range(npar):
             ax = axes[i]
             for j in range(0, self.nwalkers, max(1, self.nwalkers // nwplot)):
                 ax.plot(self.chain[j,:,i], lw=0.5,  color = 'black', alpha = 0.3)
-            ax.set_title(r'\textit{Parameter : }'+P.names[i], fontsize=12)  
-            ax.set_xlabel(r'\textit{Steps}', fontsize=12)
-            ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
+            ax.set_ylabel(P.names[i], fontsize=12)  
 
         ax = axes[-1]
         for j in range(0, self.nwalkers, max(1, self.nwalkers // nwplot)):
             ax.plot(self.lnprob[j,:], lw=0.5, color = 'black', alpha = 0.3)
-        ax.set_title(r'\textit{Likelihood}', fontsize=12)   
-        ax.set_xlabel(r'\textit{Steps}', fontsize=12)
-        ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
+        ax.set_ylabel(r'Likelihood', fontsize=12)   
+        ax.set_xlabel(r'Steps', fontsize=12)
+        #ax.set_ylabel(r'\textit{Walkers}',fontsize=12)
 
         return fig, nwplot
 
@@ -401,14 +446,23 @@ class FLUXES_ARRAYS:
             tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= tarr
             
             if self.out['realizations2plot'] > 1:
-                tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2plot'])),:].T
+                tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample+1, (self.out['realizations2plot'])),:].T
                 # replace last one with most prob
                 tau[-1], agelog[-1], nh[-1], irlum[-1], SB[-1] ,BB[-1], GA[-1],TO[-1], BBebv[-1], GAebv[-1]= t
                 
         elif self.output_type == 'int_lums':
-            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample, (self.out['realizations2int'])),:].T
+            
+            self.chain_obj.props()
+            t = self.chain_obj.best_fit_pars
+            
+            
+            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.flatchain[np.random.choice(nsample+1, (self.out['realizations2int'])),:].T
+            # replace last one with most prob
+            tau[-1], agelog[-1], nh[-1], irlum[-1], SB[-1] ,BB[-1], GA[-1],TO[-1], BBebv[-1], GAebv[-1]= t
+            
+            
         elif self.output_type == 'best_fit':
-            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.best_fit_pars
+            tau, agelog, nh, irlum, SB ,BB, GA,TO, BBebv, GAebv= self.chain_obj.best_fit_pars
 
         age = 10**agelog
 
@@ -493,7 +547,11 @@ class FLUXES_ARRAYS:
             self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
         #Only if calculating integrated luminosities:    
         elif self.output_type == 'int_lums':
-            self.int_lums= np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
+            int_lums = np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
+            self.int_lums = int_lums[:,:-1]  # all except last one which is best fit
+            
+
+            self.int_lums_best = int_lums[:,-1]  # last one
         # elif self.output_type == 'best_fit':
         #     self.filtered_modelpoints_nuLnu = self.FLUXES2nuLnu_4plotting(all_nus_rest,  filtered_modelpoints, self.chain_obj.data.z)
 
@@ -533,7 +591,7 @@ class FLUXES_ARRAYS:
         """
 
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd =nuLnus4plotting
-        out['intlum_freqranges'] = (out['intlum_freqranges']*out['intlum_freqranges_unit']).to(u.Hz, equivalencies=u.spectral())
+        intlum_freqranges = (out['intlum_freqranges']*out['intlum_freqranges_unit']).to(u.Hz, equivalencies=u.spectral())
         int_lums = []
         for m in range(len(out['intlum_models'])):
 
@@ -548,7 +606,7 @@ class FLUXES_ARRAYS:
             elif out['intlum_models'][m] == 'tor':    
                  nuLnu=TOnuLnu
         
-            index  = ((all_nus_rest >= np.log10(out['intlum_freqranges'][m][1].value)) & (all_nus_rest<= np.log10(out['intlum_freqranges'][m][0].value)))            
+            index  = ((all_nus_rest >= np.log10(intlum_freqranges[m][1].value)) & (all_nus_rest<= np.log10(intlum_freqranges[m][0].value)))            
             all_nus_rest_int = 10**(all_nus_rest[index])
             Lnu = nuLnu[:,index] / all_nus_rest_int
             Lnu_int = scipy.integrate.trapz(Lnu, x=all_nus_rest_int)
@@ -563,31 +621,75 @@ Some stand-alone functions on the SED plot format
 """
 
 
-def SED_plotting_settings2(x, ydata):
+def paper_single(TW = 6.64, AR = 0.74, FF = 1.):
+
+    #import matplotlib as mpl
+    # textwidht = 42pc = 42 * 12 pt = 42 * 12 * 1/72.27 inches
+    # columnsep = 2pc
+    # ... colwidth = 20pc
+    
+    #matplotlib.rc('figure', figsize=(4.5,3.34), dpi=200)
+    matplotlib.rc('figure', figsize=(FF*TW, FF*TW*AR), dpi=100)
+    matplotlib.rc('figure.subplot', left=0.15, right=0.95, bottom=0.15, top=0.85)
+    matplotlib.rc('lines', linewidth=1.75, markersize=8.0, markeredgewidth=0.75)
+    #matplotlib.rc('font', size=18.0, family="serif", serif="CM")
+    matplotlib.rc('xtick', labelsize='small')
+    matplotlib.rc('ytick', labelsize='small')
+    matplotlib.rc('xtick.major', width=1.0, size=8)
+    matplotlib.rc('ytick.major', width=1.0, size=8)
+    matplotlib.rc('xtick.minor', width=1.0, size=4)
+    matplotlib.rc('ytick.minor', width=1.0, size=4)
+    matplotlib.rc('axes', linewidth=1.5)
+    matplotlib.rc('legend', fontsize='small', numpoints=1, labelspacing=0.4, frameon=False) 
+    #matplotlib.rc('text', usetex=True) 
+    matplotlib.rc('savefig', dpi=300)
+    
+    # issues with usetex... but still make reasonalbe plots
+    matplotlib.rc('text', usetex=False) 
+    #matplotlib.rcParams['mathtext.fontset'] = 'cm'
+    matplotlib.rcParams['font.size'] = 14.
+    #matplotlib.rcParams['font.family'] = 'cmr10'
+    matplotlib.rc('mathtext', default='regular') 
+    
+    
+def paper_single_ax(TW = 6.64, AR = 0.74, FF = 1.):
+    #import matplotlib as mpl
+    paper_single(TW=TW, AR=AR, FF=FF)
+    f = plt.figure()
+    ax = plt.subplot(111)
+    plt.minorticks_on()
+    ylocator6 = plt.MaxNLocator(5)
+    xlocator6 = plt.MaxNLocator(6)
+    ax.xaxis.set_major_locator(xlocator6)
+    ax.yaxis.set_major_locator(ylocator6)
+    return f, ax
+
+def SED_plotting_settings_ar(x, ydata):
 
     """
     This function produces the setting for the figures for SED plotting.
     **Input:
     - all nus, and data (to make the plot limits depending on the data)
     """
+    paper_single(TW=8)
     fig = plt.figure()
-    ax1 = fig.add_axes([0.1,0.3,0.8,0.6])
+    ax1 = fig.add_axes([0.15,0.3,0.8,0.6])
     ax2 = ax1.twiny()
-    axr = fig.add_axes([0.1,0.1,0.8,0.2],sharex=ax1)
+    axr = fig.add_axes([0.15,0.1,0.8,0.2],sharex=ax1)
     #axr = fig.add_axes([0.1,0.1,0.8,0.2])
 
     #-- Latex -------------------------------------------------
-    rc('text', usetex=True)
-    rc('font', family='serif')
-    rc('axes', linewidth=1.5)
+    #rc('text', usetex=True)
+    #rc('font', family='serif')
+    #rc('axes', linewidth=1.)
     #-------------------------------------------------------------
 
     #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')   
     ax1.xaxis.set_visible(False)
-    axr.set_xlabel(r'rest-frame ${\log \  \nu}$ $[\mathrm{Hz}] $', fontsize=13)
-    ax2.set_xlabel(r'${\lambda}$ $[\mathrm{\mu m}] $', fontsize=13)
-    ax1.set_ylabel(r'$\nu L(\nu)$ $[\mathrm{erg\ s}^{-1}]$',fontsize=13)
-    axr.set_ylabel(r'residual $[\sigma]$',fontsize=13)
+    axr.set_xlabel(r'rest-frame ${\log \  \nu}$ $[\mathrm{Hz}] $')
+    ax2.set_xlabel(r'${\lambda}$ $[\mathrm{\mu m}] $')
+    ax1.set_ylabel(r'$\nu L(\nu)$ $[\mathrm{erg\ s}^{-1}]$')
+    axr.set_ylabel(r'residual $[\sigma]$')
 
     #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
     #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
@@ -597,6 +699,8 @@ def SED_plotting_settings2(x, ydata):
     ax1.set_autoscaley_on(True) 
     ax1.set_xscale('linear')
     axr.set_xscale('linear')
+    axr.minorticks_on()
+    ax1.minorticks_on()
     ax1.set_yscale('log')
 
 
@@ -635,23 +739,24 @@ def SED_plotting_settings(x, ydata):
     **Input:
     - all nus, and data (to make the plot limits depending on the data)
     """
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
+    #fig = plt.figure(figsize=(6.64,4.9136))
+    #ax1 = fig.add_subplot(111)
+    fig, ax1 = paper_single_ax()
     ax2 = ax1.twiny()
 
     #-- Latex -------------------------------------------------
-    rc('text', usetex=True)
-    rc('font', family='serif')
-    rc('axes', linewidth=1.5)
+    #rc('text', usetex=True)
+    #rc('font', family='serif')
+    #rc('axes', linewidth=1.)
     #-------------------------------------------------------------
 
     #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')    
-    ax1.set_xlabel(r'rest-frame ${\log \  \nu} [\mathrm{Hz}] $', fontsize=13)
-    ax2.set_xlabel(r'${\lambda} [\mathrm{\mu m}] $', fontsize=13)
-    ax1.set_ylabel(r'${\nu L(\nu) [\mathrm{erg \ } \mathrm{ s}^{-1}]}$',fontsize=13)
+    ax1.set_xlabel(r'rest-frame ${\log \  \nu} [\mathrm{Hz}] $')
+    ax2.set_xlabel(r'${\lambda} [\mathrm{\mu m}] $')
+    ax1.set_ylabel(r'${\nu L(\nu) [\mathrm{erg \ } \mathrm{ s}^{-1}]}$')
 
-    ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
-    ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.5)
+    #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
+    #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
 
     ax1.set_autoscalex_on(True) 
     ax1.set_autoscaley_on(True) 
