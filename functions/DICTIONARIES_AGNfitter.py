@@ -744,7 +744,7 @@ def filter_dictionaries(filterset, path, filters):
                 print 'Reading filterfile:', band_file
                 
                 #band_file = path + 'models/FILTERS/HERSCHEL/SPIRE_500mu.txt'
-                band_lambda, band_factor =  np.loadtxt(H500band_file, usecols=(0,1),unpack= True)
+                band_lambda, band_factor =  np.loadtxt(band_file, usecols=(0,1),unpack= True)
 
                 files.append(band_file)
                 lambdas.append(band_lambda)

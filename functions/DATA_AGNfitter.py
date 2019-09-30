@@ -152,7 +152,6 @@ class DATA_all:
             wl_cols = [c+self.cat['freq/wl_suffix'] for c in cols_names]
             flux_cols = [c+self.cat['flux_suffix'] for c in cols_names]
             flux_err_cols = [c+self.cat['fluxerr_suffix'] for c in cols_names]
-            ndflag_cols = [c+self.cat['ndflag_suffix'] for c in cols_names]
             #wl_cols = [ c for c in colnames if self.cat['freq/wl_suffix'] in c]
             #flux_cols = [ c for c in colnames if self.cat['flux_suffix'] in c]
             #flux_err_cols = [ c for c in colnames if self.cat['fluxerr_suffix'] in c]
@@ -170,6 +169,7 @@ class DATA_all:
             fluxerr_cat_ALL = \
                 np.array([fitstable[ce] for ce in flux_err_cols ])*self.cat['flux_unit']
             if self.cat['ndflag_bool'] == True: 
+                ndflag_cols = [c+self.cat['ndflag_suffix'] for c in cols_names]
                 ndflag_cat_ALL = np.array([fitstable[f] for f in ndflag_cols ])
 
             nus_l=[]
