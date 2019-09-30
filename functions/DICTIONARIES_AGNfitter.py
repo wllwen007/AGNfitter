@@ -738,7 +738,7 @@ def filter_dictionaries(filterset, path, filters):
                 
             with open(filters['file'],'r') as f:
                 filterfiles = f.readlines()
-                filterfiles = [f.strip() for f in filterfiles]
+                filterfiles = [f.strip() for f in filterfiles if '#' not in f]
             
             for band_file in filterfiles:
                 print 'Reading filterfile:', band_file
