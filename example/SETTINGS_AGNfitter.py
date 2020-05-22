@@ -206,5 +206,5 @@ def OUTPUT_settings():
     out['realizations2plot'] = 10
 
     out['plotSEDrealizations'] = True
-
+    
     return out

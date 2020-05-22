@@ -87,11 +87,6 @@ def main(data, P, out):
         fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
         plt.close(fig)
         
-    if out['save_chains']:
-        np.savez(data.output_folder+str(data.name)+'/PDFs_10pars'+str(data.name),labels=P.names, chain=output.chain.flatchain)
-        if out['calc_intlum']:
-            np.savez(data.output_folder+str(data.name)+'/PDFs_intlums'+str(data.name),labels=out['intlum_names'], chain=output.int_lums.T)
-        
     if out['plot_posteriortriangle'] :
         #try:
         fig = output.plot_PDFtriangle('10pars', P.names)
@@ -149,6 +144,7 @@ class OUTPUT:
             self.nuLnus = fluxobj_4SEDplots.nuLnus4plotting
             self.filtered_modelpoints_nuLnu = fluxobj_4SEDplots.filtered_modelpoints_nuLnu
             self.allnus = fluxobj_4SEDplots.all_nus_rest
+
 
     def write_parameters_outputvalues(self, P):        
 
@@ -255,6 +251,7 @@ class OUTPUT:
             fig, ax1, ax2, axr = SED_plotting_settings_ar(all_nus_rest, data_nuLnu_rest)
         else:
             fig, ax1, ax2 = SED_plotting_settings(all_nus_rest, data_nuLnu_rest)
+
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
         lw= 1.
         
@@ -279,6 +276,7 @@ class OUTPUT:
             upp = [yndflags==0]
             
             p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =alp)
+
             if plot_residuals:
                 p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
             
@@ -293,6 +291,7 @@ class OUTPUT:
             ax1.text(0.96, 0.92, 'max ln-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), ha='right', transform=ax1.transAxes )
         #ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z)+'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
         print ' => SEDs of '+ str(Nrealizations)+' different realization were plotted.'
+
 
         return fig
 
@@ -559,6 +558,8 @@ class FLUXES_ARRAYS:
             self.int_lums_best = int_lums[:,-1]  # last one
         # elif self.output_type == 'best_fit':
         #     self.filtered_modelpoints_nuLnu = self.FLUXES2nuLnu_4plotting(all_nus_rest,  filtered_modelpoints, self.chain_obj.data.z)
+        
+        
 
 
     def FLUXES2nuLnu_4plotting(self, all_nus_rest, FLUXES4plotting, z):
