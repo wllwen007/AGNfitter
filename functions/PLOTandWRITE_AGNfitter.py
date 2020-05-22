@@ -83,7 +83,7 @@ def main(data, P, out):
         np.savetxt(data.output_folder + str(data.name)+'/parameter_outvalues_'+str(data.name)+'.txt' , outputvalues, delimiter = " ",fmt= "%1.4f" ,header= outputvalues_header, comments =comments_ouput)
 
     if out['plotSEDrealizations']:
-        fig = output.plot_manyrealizations_SED()
+        fig = output.plot_manyrealizations_SED(plot_residuals=out['plot_residuals'])
         fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
         plt.close(fig)
         
@@ -96,7 +96,8 @@ def main(data, P, out):
         #print 'Failed to plot pdf triangle'
 
     if out['plot_posteriortrianglewithluminosities']: 
-        labels = [s.replace('_','\_') for s in out['intlum_names']]
+        #labels = [s.replace('_','\_') for s in out['intlum_names']]
+        labels = [s for s in out['intlum_names']]
         fig = output.plot_PDFtriangle('int_lums', labels) 
         fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_intlums_'+str(data.name)+'.' + out['plot_format'])
         plt.close(fig)
@@ -220,7 +221,7 @@ class OUTPUT:
         return figure
 
 
-    def plot_manyrealizations_SED(self):    
+    def plot_manyrealizations_SED(self, plot_residuals=True):    
 
 
         #reading from valid data from object data
@@ -246,7 +247,11 @@ class OUTPUT:
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd = self.nuLnus
 
         #plotting settings
-        fig, ax1, ax2, axr = SED_plotting_settings_ar(all_nus_rest, data_nuLnu_rest)
+        if plot_residuals:
+            fig, ax1, ax2, axr = SED_plotting_settings_ar(all_nus_rest, data_nuLnu_rest)
+        else:
+            fig, ax1, ax2 = SED_plotting_settings(all_nus_rest, data_nuLnu_rest)
+
         SBcolor, BBcolor, GAcolor, TOcolor, TOTALcolor= SED_colors(combination = 'a')
         lw= 1.
         
@@ -271,7 +276,9 @@ class OUTPUT:
             upp = [yndflags==0]
             
             p6 = ax1.plot(data_nus, self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.],   marker='o', linestyle="None",markersize=5, color="red", alpha =alp)
-            p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
+
+            if plot_residuals:
+                p6r = axr.plot(data_nus[det], (data_nuLnu_rest[det]-self.filtered_modelpoints_nuLnu[i][self.data.fluxes>0.][det])/data_errors_rest[det],   marker='o', mec="None", linestyle="None",markersize=5, color="red", alpha =alp)
             
 
 
@@ -279,8 +286,9 @@ class OUTPUT:
             (_, caps, _) = ax1.errorbar(data_nus[det], data_nuLnu_rest[det], yerr= data_errors_rest[det], capsize=4, linestyle="None", linewidth=1.5,  marker='o',markersize=5, color="black", alpha = 1)
 
 
-        ax1.text(0.04, 0.92, r'XID='+str(self.data.name)+r', z ='+ str(self.z), ha='left', transform=ax1.transAxes )
-        ax1.text(0.96, 0.92, 'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), ha='right', transform=ax1.transAxes )
+        ax1.text(0.04, 0.92, r'id='+str(self.data.name)+r', z ='+ str(self.z), ha='left', transform=ax1.transAxes )
+        if plot_residuals:
+            ax1.text(0.96, 0.92, 'max ln-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), ha='right', transform=ax1.transAxes )
         #ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z)+'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
         print ' => SEDs of '+ str(Nrealizations)+' different realization were plotted.'
 
@@ -535,7 +543,12 @@ class FLUXES_ARRAYS:
             filtered_modelpoints = np.array(filtered_modelpoints_list)
             distance= model.z2Dlum(data.z)
             lumfactor = (4. * math.pi * distance**2.)
-            self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
+            try:
+                self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
+            except:
+                print filtered_modelpoints, filtered_modelpoints.shape
+                print lumfactor
+                print data.nus, data.nus.shape
         #Only if calculating integrated luminosities:    
         elif self.output_type == 'int_lums':
             int_lums = np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
@@ -614,6 +627,49 @@ Some stand-alone functions on the SED plot format
 """
 
 
+def paper_single(TW = 6.64, AR = 0.74, FF = 1.):
+
+    #import matplotlib as mpl
+    # textwidht = 42pc = 42 * 12 pt = 42 * 12 * 1/72.27 inches
+    # columnsep = 2pc
+    # ... colwidth = 20pc
+    
+    #matplotlib.rc('figure', figsize=(4.5,3.34), dpi=200)
+    matplotlib.rc('figure', figsize=(FF*TW, FF*TW*AR), dpi=100)
+    matplotlib.rc('figure.subplot', left=0.15, right=0.95, bottom=0.15, top=0.85)
+    matplotlib.rc('lines', linewidth=1.75, markersize=8.0, markeredgewidth=0.75)
+    #matplotlib.rc('font', size=18.0, family="serif", serif="CM")
+    matplotlib.rc('xtick', labelsize='small')
+    matplotlib.rc('ytick', labelsize='small')
+    matplotlib.rc('xtick.major', width=1.0, size=8)
+    matplotlib.rc('ytick.major', width=1.0, size=8)
+    matplotlib.rc('xtick.minor', width=1.0, size=4)
+    matplotlib.rc('ytick.minor', width=1.0, size=4)
+    matplotlib.rc('axes', linewidth=1.5)
+    matplotlib.rc('legend', fontsize='small', numpoints=1, labelspacing=0.4, frameon=False) 
+    #matplotlib.rc('text', usetex=True) 
+    matplotlib.rc('savefig', dpi=300)
+    
+    # issues with usetex... but still make reasonalbe plots
+    matplotlib.rc('text', usetex=False) 
+    #matplotlib.rcParams['mathtext.fontset'] = 'cm'
+    matplotlib.rcParams['font.size'] = 14.
+    #matplotlib.rcParams['font.family'] = 'cmr10'
+    matplotlib.rc('mathtext', default='regular') 
+    
+    
+def paper_single_ax(TW = 6.64, AR = 0.74, FF = 1.):
+    #import matplotlib as mpl
+    paper_single(TW=TW, AR=AR, FF=FF)
+    f = plt.figure()
+    ax = plt.subplot(111)
+    plt.minorticks_on()
+    ylocator6 = plt.MaxNLocator(5)
+    xlocator6 = plt.MaxNLocator(6)
+    ax.xaxis.set_major_locator(xlocator6)
+    ax.yaxis.set_major_locator(ylocator6)
+    return f, ax
+
 def SED_plotting_settings_ar(x, ydata):
 
     """
@@ -621,24 +677,25 @@ def SED_plotting_settings_ar(x, ydata):
     **Input:
     - all nus, and data (to make the plot limits depending on the data)
     """
+    paper_single(TW=8)
     fig = plt.figure()
-    ax1 = fig.add_axes([0.1,0.3,0.8,0.6])
+    ax1 = fig.add_axes([0.15,0.3,0.8,0.6])
     ax2 = ax1.twiny()
-    axr = fig.add_axes([0.1,0.1,0.8,0.2],sharex=ax1)
+    axr = fig.add_axes([0.15,0.1,0.8,0.2],sharex=ax1)
     #axr = fig.add_axes([0.1,0.1,0.8,0.2])
 
     #-- Latex -------------------------------------------------
     #rc('text', usetex=True)
-    rc('font', family='serif')
-    rc('axes', linewidth=1.5)
+    #rc('font', family='serif')
+    #rc('axes', linewidth=1.)
     #-------------------------------------------------------------
 
     #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')   
     ax1.xaxis.set_visible(False)
-    axr.set_xlabel(r'rest-frame ${\log \  \nu}$ $[\mathrm{Hz}] $', fontsize=13)
-    ax2.set_xlabel(r'${\lambda}$ $[\mathrm{\mu m}] $', fontsize=13)
-    ax1.set_ylabel(r'$\nu L(\nu)$ $[\mathrm{erg\ s}^{-1}]$',fontsize=13)
-    axr.set_ylabel(r'residual $[\sigma]$',fontsize=13)
+    axr.set_xlabel(r'rest-frame ${\log \  \nu}$ $[\mathrm{Hz}] $')
+    ax2.set_xlabel(r'${\lambda}$ $[\mathrm{\mu m}] $')
+    ax1.set_ylabel(r'$\nu L(\nu)$ $[\mathrm{erg\ s}^{-1}]$')
+    axr.set_ylabel(r'residual $[\sigma]$')
 
     #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
     #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
@@ -649,6 +706,7 @@ def SED_plotting_settings_ar(x, ydata):
     ax1.set_xscale('linear')
     axr.set_xscale('linear')
     axr.minorticks_on()
+    ax1.minorticks_on()
     ax1.set_yscale('log')
 
 
@@ -687,23 +745,24 @@ def SED_plotting_settings(x, ydata):
     **Input:
     - all nus, and data (to make the plot limits depending on the data)
     """
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
+    #fig = plt.figure(figsize=(6.64,4.9136))
+    #ax1 = fig.add_subplot(111)
+    fig, ax1 = paper_single_ax()
     ax2 = ax1.twiny()
 
     #-- Latex -------------------------------------------------
     #rc('text', usetex=True)
-    rc('font', family='serif')
-    rc('axes', linewidth=1.5)
+    #rc('font', family='serif')
+    #rc('axes', linewidth=1.)
     #-------------------------------------------------------------
 
     #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')    
-    ax1.set_xlabel(r'rest-frame ${\log \  \nu} [\mathrm{Hz}] $', fontsize=13)
-    ax2.set_xlabel(r'${\lambda} [\mathrm{\mu m}] $', fontsize=13)
-    ax1.set_ylabel(r'${\nu L(\nu) [\mathrm{erg \ } \mathrm{ s}^{-1}]}$',fontsize=13)
+    ax1.set_xlabel(r'rest-frame ${\log \  \nu} [\mathrm{Hz}] $')
+    ax2.set_xlabel(r'${\lambda} [\mathrm{\mu m}] $')
+    ax1.set_ylabel(r'${\nu L(\nu) [\mathrm{erg \ } \mathrm{ s}^{-1}]}$')
 
-    ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
-    ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.5)
+    #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
+    #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
 
     ax1.set_autoscalex_on(True) 
     ax1.set_autoscaley_on(True) 

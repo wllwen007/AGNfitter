@@ -16,6 +16,7 @@ This script contains all functions which are needed to construct the total model
 """
 import numpy as np
 import sys
+import os
 from collections import defaultdict
 
 import MODEL_AGNfitter as model
@@ -150,6 +151,8 @@ class MODELSDICT:
             STARBURSTFdict_4plot[str(starburst_object.irlum[irlumi])] = sb_nu0, sb_Fnu0
             bands, sb_Fnu_filtered = model.filters1(sb_nu0, sb_Fnu0, filterdict, z)
             STARBURSTFdict_filtered[str(starburst_object.irlum[irlumi])] = bands, sb_Fnu_filtered
+#            print sb_Fnu_filtered
+#            print np.amax(sb_Fnu_filtered)
             if np.amax(sb_Fnu_filtered) == 0:
                 print 'Error: something is wrong in the calculation of STARBURST flux'
 
@@ -251,12 +254,13 @@ def filter_dictionaries(filterset, path, filters):
 
     input
     -------
-    - filterset: Here we have two types of filterset: 
-    'BANDSET_default' or 'BANDSET_settings'.
+    - filterset: Here we have three types of filterset: 
+    'BANDSET_default' or 'BANDSET_settings' or 'BANDSET_file'.
     This was specified from the RUN_AGNfitter_multi.py script.
 
     'BANDSET_default' includes bands needed for the example.
     'BANDSET_settings' includes all bands you specify in RUN_AGNfitter_multi.py. 
+    'BANDSET_file' specify a filename contaiing the full paths for your set of filters
 
     dependency
     ----------
@@ -472,7 +476,7 @@ def filter_dictionaries(filterset, path, filters):
             central_nu_list.append(central_nu)
 
 
-    if filterset == 'BANDSET_settings':
+    elif filterset == 'BANDSET_settings':
 
         files =[]
         lambdas = []
@@ -717,6 +721,66 @@ def filter_dictionaries(filterset, path, filters):
             #print i, central_nu
 
         central_nu_list = sorted(central_nu_list)
+            
+            
+            
+    elif filterset == 'BANDSET_file':
+        
+        
+
+        files =[]
+        lambdas = []
+        factors = []
+
+        if filters['file']:
+            
+            if not os.path.exists(filters['file']):
+                print 'Error: specified filter file list', filters['file'],' does not exist'
+                sys.exit(1)
+                
+            with open(filters['file'],'r') as f:
+                filterfiles = f.readlines()
+                filterfiles = [f.strip() for f in filterfiles if '#' not in f]
+            
+            for band_file in filterfiles:
+                print 'Reading filterfile:', band_file
+                
+                #band_file = path + 'models/FILTERS/HERSCHEL/SPIRE_500mu.txt'
+                band_lambda, band_factor =  np.loadtxt(band_file, usecols=(0,1),unpack= True)
+
+                files.append(band_file)
+                lambdas.append(band_lambda)
+                factors.append(band_factor)
+            
+
+        # make dictionaries lambdas_dict, factors_dict
+        files_dict = defaultdict(list)
+        lambdas_dict = defaultdict(list)
+        factors_dict = defaultdict(list)
+        central_nu_list=[]        
+
+        #print len(files)
+        for i in range(len(files)):
+
+            c=    2.997e8
+            Angstrom = 1e10
+
+            central_lamb = np.sum(lambdas[i]*factors[i])/np.sum(factors[i])
+            central_nu = float(np.log10((Angstrom*c)/central_lamb))
+
+            files_dict[central_nu].append(files[i])
+            lambdas_dict[central_nu].append(lambdas[i])
+            factors_dict[central_nu].append(factors[i])
+
+            central_nu_list.append(central_nu)
+            
+            #print i, central_nu
+
+        central_nu_list = sorted(central_nu_list)
+        
+    else:
+        print  'Error: filterset', filterset, 'not handled'
+        sys.exit(1)
             
     return np.array(central_nu_list), files_dict, lambdas_dict, factors_dict
 
