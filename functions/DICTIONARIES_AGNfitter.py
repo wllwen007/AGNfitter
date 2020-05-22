@@ -151,6 +151,8 @@ class MODELSDICT:
             STARBURSTFdict_4plot[str(starburst_object.irlum[irlumi])] = sb_nu0, sb_Fnu0
             bands, sb_Fnu_filtered = model.filters1(sb_nu0, sb_Fnu0, filterdict, z)
             STARBURSTFdict_filtered[str(starburst_object.irlum[irlumi])] = bands, sb_Fnu_filtered
+#            print sb_Fnu_filtered
+#            print np.amax(sb_Fnu_filtered)
             if np.amax(sb_Fnu_filtered) == 0:
                 print 'Error: something is wrong in the calculation of STARBURST flux'
 

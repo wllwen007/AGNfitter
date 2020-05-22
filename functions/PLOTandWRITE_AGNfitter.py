@@ -544,7 +544,12 @@ class FLUXES_ARRAYS:
             filtered_modelpoints = np.array(filtered_modelpoints_list)
             distance= model.z2Dlum(data.z)
             lumfactor = (4. * math.pi * distance**2.)
-            self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
+            try:
+                self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
+            except:
+                print filtered_modelpoints, filtered_modelpoints.shape
+                print lumfactor
+                print data.nus, data.nus.shape
         #Only if calculating integrated luminosities:    
         elif self.output_type == 'int_lums':
             int_lums = np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))

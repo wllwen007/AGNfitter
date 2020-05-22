@@ -166,7 +166,9 @@ def RUN_AGNfitter_onesource_independent(cat, line, data_obj, filtersz, clobbermo
 
     data.DICTS(filtersz, Modelsdictz)
 
+    print 'Data contains', data.nus.shape,' frequencies'
 
+    #import ipdb ; ipdb.set_trace()
     P = parspace.Pdict (data)   # Dictionary with all parameter space especifications.
                                 # From PARAMETERSPACE_AGNfitter.py
 

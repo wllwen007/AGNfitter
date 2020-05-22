@@ -94,6 +94,10 @@ def ln_likelihood(x, y, ysigma, z, y_model):
 
     x_valid = np.arange(len(x))[(x< np.log10(10**(15.38)/(1+z))) & (y>-99.)]
 
+    #print y, y.shape
+    #print y_model, y_model.shape
+    #print ysigma, ysigma.shape
+    #print x_valid, x_valid.shape
     resid = [(y[i] - y_model[i])/ysigma[i] for i in x_valid]
 
 
