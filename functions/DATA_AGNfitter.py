@@ -206,11 +206,11 @@ class DATA_all:
 
                 dictionary = self.filters.copy()
                 
-                del dictionary['dict_zarray'];
+                if dictionary['dict_zarray']: del dictionary['dict_zarray'];
                 #del dictionary['order'];
-                del dictionary['add_filters_dict'];
-                del dictionary['add_filters'];
-                del dictionary['path'];
+                if dictionary['add_filters_dict']: del dictionary['add_filters_dict'];
+                if dictionary['add_filters']: del dictionary['add_filters'];
+                if dictionary['path']: del dictionary['path'];
 
                 list_centralwls = []
                 for i in range(len(dictionary.keys())):
