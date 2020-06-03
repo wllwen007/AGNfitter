@@ -65,6 +65,16 @@ def main(data, models, P, out, models_settings):
 
     output = OUTPUT(chain_mcmc, data, models, P, models_settings)
 
+    if out['plotSEDrealizations']:
+        fig, save_SEDS = output.plot_manyrealizations_SED(plot_residuals=out['plot_residuals'])
+        fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
+        n_rp=out['realizations2plot']
+        SEDs_header = '#freq '+' '.join(['SBnuLnu'+str(i) for i in range(n_rp)]) +' ' +' '.join(['BBnuLnu'+str(i) for i in range(n_rp)])+' '+' '.join(['GAnuLnu'+str(i) for i in range(n_rp)])+' '+' '.join(['TOnuLnu'+str(i) for i in range(n_rp)])+' '+' '.join(['TOTALnuLnu'+str(i) for i in range(n_rp)]) +' '+' '.join(['BBnuLnu_deredd'+str(i) for i in range(n_rp)]) 
+        np.savetxt(data.output_folder + str(data.name)+'/output_SEDs_'+str(data.name)+'.txt' , save_SEDS, delimiter = " ",fmt= "%1.4f" ,header= SEDs_header, comments='')
+        
+        plt.close(fig)
+        
+
     if out['plot_tracesburn-in']:
         fig, nplot=chain_burnin.plot_trace(P)
         fig.suptitle('Chain traces for %i of %i walkers.' % (nplot,chain_burnin.nwalkers))
@@ -96,18 +106,10 @@ def main(data, models, P, out, models_settings):
         comments_ouput= ' # Output for source ' +str(data.name) + '\n' +' Rows are: 2.5, 16, 50, 84, 97.5 percentiles, max likelihood # '+'\n'+ '-----------------------------------------------------'+'\n' 
         np.savetxt(data.output_folder + str(data.name)+'/parameter_outvalues_'+str(data.name)+'.txt' , outputvalues, delimiter = " ",fmt= "%1.4f" ,header= outputvalues_header, comments =comments_ouput)
 
-    if out['plotSEDrealizations']:
-        fig, save_SEDS = output.plot_manyrealizations_SED(plot_residuals=out['plot_residuals'])
-        fig.savefig(data.output_folder+str(data.name)+'/SED_manyrealizations_' +str(data.name)+ '.'+out['plot_format'])
-        n_rp=out['realizations2plot']
-        SEDs_header = '#freq '+' '.join(['SBnuLnu'+str(i) for i in range(n_rp)]) +' ' +' '.join(['BBnuLnu'+str(i) for i in range(n_rp)])+' '+' '.join(['GAnuLnu'+str(i) for i in range(n_rp)])+' '+' '.join(['TOnuLnu'+str(i) for i in range(n_rp)])+' '+' '.join(['TOTALnuLnu'+str(i) for i in range(n_rp)]) +' '+' '.join(['BBnuLnu_deredd'+str(i) for i in range(n_rp)]) 
-        np.savetxt(data.output_folder + str(data.name)+'/output_SEDs_'+str(data.name)+'.txt' , save_SEDS, delimiter = " ",fmt= "%1.4f" ,header= SEDs_header, comments='')
-        
-        plt.close(fig)
-        
+
     if out['plot_posteriortriangle'] :
         #try:
-        fig = output.plot_PDFtriangle('10pars', P.names)
+        fig = output.plot_PDFtriangle('10pars', P['names'])
         fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_10pars_'+str(data.name)+'.' + out['plot_format'])
         plt.close(fig)
         #except:
@@ -204,11 +206,11 @@ class OUTPUT:
 
             #y=x
     
-            outputvalues_header= ' '.join([ i for i in np.hstack((P.names, 'log Mstar', 'SFR_opt', self.out['intlum_names'], 'SFR_IR', '-ln_like'))] )
+            outputvalues_header= ' '.join([ i for i in np.hstack((P['names'], 'log Mstar', 'SFR_opt', self.out['intlum_names'], 'SFR_IR', '-ln_like'))] )
 
         else:
             outputvalues = np.column_stack((map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]), zip(*np.percentile(chain_pars, [16, 50, 84],  axis=0))))) 
-            outputvalues_header=' '.join( [ i for i in P.names] )
+            outputvalues_header=' '.join( [ i for i in P['names']] )
         return outputvalues, outputvalues_header
 
     def write_parameters_outputvalues1(self, P):        
@@ -645,16 +647,16 @@ class FLUXES_ARRAYS:
                 print(data.nus, data.nus.shape)
         #Only if calculating integrated luminosities:    
 #<<<<<<< HEAD
-        #elif self.output_type == 'int_lums':
-            #int_lums = np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
-            #self.int_lums = int_lums[:,:-1]  # all except last one which is best fit
+        elif self.output_type == 'int_lums':
+            int_lums = np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
+            self.int_lums = int_lums[:,:-1]  # all except last one which is best fit
             
 
-            #self.int_lums_best = int_lums[:,-1]  # last one
+            self.int_lums_best = int_lums[:,-1]  # last one
 #=======
-        if self.output_type == 'int_lums':
-            #Convert Fluxes to nuLnu
-            self.int_lums= np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
+        #if self.output_type == 'int_lums':
+            ##Convert Fluxes to nuLnu
+            #self.int_lums= np.log10(self.integrated_luminosities(self.out ,self.all_nus_rest, self.nuLnus4plotting))
 #>>>>>>> AGNfitter_v2.0
         # elif self.output_type == 'best_fit':
         #     self.filtered_modelpoints_nuLnu = self.FLUXES2nuLnu_4plotting(all_nus_rest,  filtered_modelpoints, self.chain_obj.data.z)
@@ -697,7 +699,11 @@ class FLUXES_ARRAYS:
         """
 
         SBnuLnu, BBnuLnu, GAnuLnu, TOnuLnu, TOTALnuLnu, BBnuLnu_deredd =nuLnus4plotting
-        intlum_freqranges = (out['intlum_freqranges']*out['intlum_freqranges_unit']).to(u.Hz, equivalencies=u.spectral())
+        try:
+            out['intlum_freqranges'] = (out['intlum_freqranges']*out['intlum_freqranges_unit']).to(u.Hz, equivalencies=u.spectral())
+        except:
+            print ('Error converting units, assuiming it is ok')
+            print(out['intlum_freqranges'][0][0].unit)
         int_lums = []
         for m in range(len(out['intlum_models'])):
 
@@ -787,7 +793,7 @@ def paper_single_ax(TW = 6.64, AR = 0.74, FF = 1.):
     ax.yaxis.set_major_locator(ylocator6)
     return f, ax
 
-def SED_plotting_settings_ar(x, ydata):
+def SED_plotting_settings_ar(x, ydata, modeldata):
 
 
     """
@@ -833,6 +839,7 @@ def SED_plotting_settings_ar(x, ydata):
     maxdata = np.max(ydata)
     #ax1.set_ylim(mediandata /50.,mediandata * 50.)
     ax1.set_ylim(mindata /10.,maxdata * 10.)
+    ax1.set_xlim(min(modeldata), max(modeldata))
 
     ax2.set_xscale('log')
     ax2.set_yscale('log')
@@ -856,32 +863,31 @@ def SED_plotting_settings_ar(x, ydata):
     return fig, ax1, ax2, axr
 
 
-def SED_plotting_settings(x, ydata):
+
+def SED_plotting_settings(x, ydata, modeldata):
 
     """
     This function produces the setting for the figures for SED plotting.
     **Input:
     - all nus, and data (to make the plot limits depending on the data)
     """
-    #fig = plt.figure(figsize=(6.64,4.9136))
-    #ax1 = fig.add_subplot(111)
-    fig, ax1 = paper_single_ax()
-
+    fig = plt.figure(figsize=(9,5))
+    ax1 = fig.add_subplot(111)
     ax2 = ax1.twiny()
 
     #-- Latex -------------------------------------------------
-    #rc('text', usetex=True)
-    #rc('font', family='serif')
-    #rc('axes', linewidth=1.)
+    rc('text', usetex=True)
+    rc('font', family='serif')
+    rc('axes', linewidth=1.5)
     #-------------------------------------------------------------
 
     #    ax1.set_title(r"\textbf{SED of Type 2}" + r"\textbf{ AGN }"+ "Source Nr. "+ source + "\n . \n . \n ." , fontsize=17, color='k')    
-    ax1.set_xlabel(r'rest-frame ${\log \  \nu} [\mathrm{Hz}] $')
-    ax2.set_xlabel(r'${\lambda} [\mathrm{\mu m}] $')
-    ax1.set_ylabel(r'${\nu L(\nu) [\mathrm{erg \ } \mathrm{ s}^{-1}]}$')
+    ax1.set_xlabel(r'rest-frame $\mathbf{log \  \nu} [\mathtt{Hz}] $', fontsize=13)
+    ax2.set_xlabel(r'$\mathbf{\lambda} [\mathtt{\mu m}] $', fontsize=13)
+    ax1.set_ylabel(r'$\mathbf{\nu L(\nu) [\mathtt{erg \ } \mathtt{ s}^{-1}]}$',fontsize=13)
 
-    #ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.)
-    #ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.)
+    ax1.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
+    ax1.tick_params(axis='both',reset=False,which='minor',length=4,width=1.5)
 
     ax1.set_autoscalex_on(True) 
     ax1.set_autoscaley_on(True) 
@@ -890,16 +896,14 @@ def SED_plotting_settings(x, ydata):
 
 
     mediandata = np.median(ydata)
-    mindata = np.min(ydata)
-    maxdata = np.max(ydata)
-    #ax1.set_ylim(mediandata /50.,mediandata * 50.)
-    ax1.set_ylim(mindata /10.,maxdata * 10.)
+    ax1.set_ylim(1e33,1e46)
+    ax1.set_ylim(mediandata /90.,mediandata * 50.)
+    ax1.set_xlim(min(modeldata), max(modeldata))
 
     ax2.set_xscale('log')
     ax2.set_yscale('log')
-    #ax2.set_ylim( mediandata /50., mediandata * 50.)
-    ax2.set_ylim( mindata /10., maxdata * 10.)
-
+    ax2.set_ylim( mediandata /90., mediandata * 50.)
+    #ax2.set_ylim(1e33,1e46)
 
     ax2.get_xaxis().set_major_formatter(ticker.ScalarFormatter())
     ax2.tick_params(axis='both',reset=False,which='major',length=8,width=1.5)
