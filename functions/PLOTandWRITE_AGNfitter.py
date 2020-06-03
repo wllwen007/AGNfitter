@@ -111,7 +111,7 @@ def main(data, models, P, out, models_settings):
         fig.savefig(data.output_folder+str(data.name)+'/PDFtriangle_10pars_'+str(data.name)+'.' + out['plot_format'])
         plt.close(fig)
         #except:
-        #print 'Failed to plot pdf triangle'
+        #print('Failed to plot pdf triangle')
 
     if out['plot_posteriortrianglewithluminosities']: 
         #labels = [s.replace('_','\_') for s in out['intlum_names']]
@@ -194,9 +194,9 @@ class OUTPUT:
             outputvalues = np.column_stack((np.transpose(list(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_pars, [2.5,16, 50, 84,97.5], axis=0))))),
                                             np.transpose(list(map(lambda v: (v[0],v[1],v[2],v[3],v[4]), zip(*np.percentile(chain_others, [2.5,16, 50, 84,97.5], axis=0))))),
                                             np.transpose(np.percentile(self.chain.lnprob_flat, [2.5,16, 50, 84,97.5], axis=0)) ))  
-            print chain_pars_best
-            print chain_others_best
-            print np.max(self.chain.lnprob_flat)
+            print(chain_pars_best)
+            print(chain_others_best)
+            print(np.max(self.chain.lnprob_flat))
             
             outputvalues_best = np.hstack( (chain_pars_best, chain_others_best, np.max(self.chain.lnprob_flat)) )
             outputvalues = np.vstack((outputvalues, outputvalues_best))
@@ -323,7 +323,7 @@ class OUTPUT:
         if plot_residuals:
             ax1.text(0.96, 0.92, 'max ln-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), ha='right', transform=ax1.transAxes )
         #ax1.annotate(r'XID='+str(self.data.name)+r', z ='+ str(self.z)+'max log-likelihood = {ml:.1f}'.format(ml=np.max(self.chain.lnprob_flat)), xy=(0, 1),  xycoords='axes points', xytext=(20, 310), textcoords='axes points' )#+ ', log $\mathbf{L}_{\mathbf{IR}}$= ' + str(Lir_agn) +', log $\mathbf{L}_{\mathbf{FIR}}$= ' + str(Lfir) + ',  log $\mathbf{L}_{\mathbf{UV}} $= '+ str(Lbol_agn)
-        print ' => SEDs of '+ str(Nrealizations)+' different realization were plotted.'
+        print (' => SEDs of '+ str(Nrealizations)+' different realization were plotted.')
 
 
         return fig, save_SEDs
@@ -640,9 +640,9 @@ class FLUXES_ARRAYS:
             try:
                 self.filtered_modelpoints_nuLnu = (filtered_modelpoints *lumfactor* 10**(data.nus))
             except:
-                print filtered_modelpoints, filtered_modelpoints.shape
-                print lumfactor
-                print data.nus, data.nus.shape
+                print(filtered_modelpoints, filtered_modelpoints.shape)
+                print(lumfactor)
+                print(data.nus, data.nus.shape)
         #Only if calculating integrated luminosities:    
 #<<<<<<< HEAD
         #elif self.output_type == 'int_lums':
