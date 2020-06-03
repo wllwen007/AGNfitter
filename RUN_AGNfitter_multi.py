@@ -364,6 +364,87 @@ if __name__ == "__main__":
 
         elif args.sourcenumber >= 0:
             RUN_AGNfitter_onesource_independent(args.sourcenumber, data_ALL, filters_settings, models_settings, clobbermodel=clobbermodel)
+            
+            ##RUN_AGNfitter_onesource_independent( line, data_obj, filtersz, models_settings, clobbermodel=False):
+            #line, data_obj, filtersz, models_settings = args.sourcenumber, data_ALL, filters_settings, models_settings
+            
+            #"""
+            #Main function for fitting a single source in line and create it's modelsdict independently.
+            #"""
+            
+            #mc = MCMC_settings()
+            #out = OUTPUT_settings()
+            #data = DATA(data_obj,line)
+            ####!!!
+            #models = MODELS(data.z, models_settings)
+
+            #print ( '')
+            #print ( '________________________'    )
+            #print ( 'Fitting sources from catalog: ', data.catalog )
+            #print ( '- Sourceline: ', line)
+            #print ( '- Sourcename: ', data.name)
+            #print ( '- has flux measurements: ', len(data.fluxes))
+
+
+            ### 0. CONSTRUCT DICTIONARY for this redshift
+            #t0= time.time()
+
+            ### needs a list/array of z
+            #filtersz['dict_zarray'] = [data.z]
+
+            ### save the dictionary for this source in the OUTPUT folder for this source
+            ### create this source output folder if it doesn't exist
+            #if not os.path.lexists(cat_settings['output_folder']+str(data.name)):
+                #os.system('mkdir -p ' + cat_settings['output_folder'] +str(data.name))
+
+            #dictz = cat_settings['output_folder'] +str(data.name) +'/MODELSDICT_' + str(data.name) 
+            ### remove this source modelsdict if it already exists and we want to remove it
+            #if clobbermodel and os.path.lexists(dictz):
+                #os.system('rm -rf '+dictz)
+                #print ( "removing source model dictionary "+dictz )
+            
+            #if os.path.lexists(cat_settings['output_folder'] +str(data.name) +'/samples_mcmc.sav1'):           
+                #print('Done')
+                
+            #else:
+
+                #try:  
+                    #if not os.path.lexists(dictz):
+                        #zdict = MODELSDICT(dictz, cat_settings['path'], filtersz, models_settings)
+                        #zdict.build()
+                        #f = open(zdict.filename, 'wb')
+                        #pickle.dump(zdict, f, protocol=2)
+                        #f.close()
+                        #print ( '_____________________________________________________')
+                        #print ( 'For this dictionary creation %.2g min elapsed'% ((time.time() - t0)/60.) )
+                    #else:
+                        #dictz = str.encode(dictz)
+                        #with open(dictz, 'rb') as f:
+                            #zdict = pickle.load(f, encoding='latin1')
+                    #Modelsdictz = zdict.MD
+
+                    #models.DICTS(filtersz, Modelsdictz)
+
+                    #P = parspace.Pdict (data, models)   # Dictionary with all parameter space specifications.
+                                                ## From PARAMETERSPACE_AGNfitter.py
+
+                    #t1= time.time()
+                    ##MCMC_AGNfitter.main(data, models, P, mc)
+                    #PLOTandWRITE_AGNfitter.main(data,  models, P,  out, models_settings)
+                    #try:            
+                        #PLOTandWRITE_AGNfitter.main(data, models,  P,  out, models_settings)
+                        #print ( 'Done already'  )      
+                    #except:
+                        #print ( 'Not done yet')
+                        #MCMC_AGNfitter.main(data, models, P, mc) 
+                        #PLOTandWRITE_AGNfitter.main(data, models, P, out, models_settings)        
+
+                    #print ( '_____________________________________________________')
+                    #print ( 'For this fit %.2g min elapsed'% ((time.time() - t1)/60.))
+
+                #except EOFError: 
+                    #print ( 'Line ',line,' cannot be fitted.')
+            
         else:
             for i in range(0, 110, 1):
                 RUN_AGNfitter_onesource_independent(i, data_ALL, filters_settings, models_settings, clobbermodel=clobbermodel)
